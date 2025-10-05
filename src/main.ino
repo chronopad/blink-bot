@@ -29,6 +29,10 @@ const unsigned long idleTimeout = 5000;
 // Timer variables
 unsigned long _timerBegin = 0;
 bool timerRunning = false;
+bool timerFinished = false;
+int timerMinutes = 1; 
+int timerSeconds = 5; 
+unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
 
 // Stopwatch variables
 unsigned long _stopwatchBegin = 0;
@@ -84,11 +88,15 @@ void loop() {
                 if (showTimer) {
                     // Button 3: Toggle start / stop
                     if (i == 2) {
-                        timerRunning = !timerRunning;
-                        if (timerRunning) _timerBegin = millis();
+                        if (!timerFinished) {
+                            timerRunning = !timerRunning;
+                            if (timerRunning) _timerBegin = millis();
+                        }
                     } 
                     // Button 4: Back to menu
                     else if (i == 3) {
+                        timerRunning = false;
+                        timerFinished = false;
                         showTimer = false;
                         showMenu = true;
                         drawMenu();
@@ -125,8 +133,8 @@ void loop() {
     }
     
     // Functionality: Idle returns to home
-    if ((showMenu || showTimer || showStopwatch || showInfo) && (millis() - lastInteraction > idleTimeout)) {
-        showMenu = showTimer = showStopwatch = showInfo = false;
+    if ((showMenu) && (millis() - lastInteraction > idleTimeout)) {
+        showMenu = false;
         showHome = true;
         selectedItem = 0;
         drawHome();
@@ -207,11 +215,30 @@ void drawTimer() {
     
     unsigned long elapsed = 0;
     if (timerRunning) elapsed = (millis() - _timerBegin) / 1000;
-    
-    display.setTextSize(2);
-    display.setCursor(40, 30);
-    display.print(elapsed);
-    display.println("s");
+
+    long remaining = timerTotalSeconds - elapsed;
+    if (remaining <= 0) {
+        remaining = 0;
+        timerRunning = false;
+        timerFinished = true;
+    }
+
+    int minutes = remaining / 60;
+    int seconds = remaining % 60;
+
+    char timeStr[6];
+    sprintf(timeStr, "%02d:%02d", minutes, seconds);
+
+    display.setTextSize(3);
+    display.setCursor(25, 25);
+    display.print(timeStr);
+
+    if (timerFinished) {
+        display.setTextSize(1);
+        display.setCursor(40, 55);
+        display.print("DONE!");
+    }
+
     display.display();
 }
 
