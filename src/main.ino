@@ -30,7 +30,7 @@ bool showStopwatch = false;
 bool showInfo = false;
 
 unsigned long lastInteraction = 0;
-const unsigned long idleTimeout = 5000; 
+const unsigned long idleTimeout = 5000;
 
 // Submenu variables
 bool showSubMenu = false;
@@ -41,14 +41,16 @@ int subMenuLength = 2;
 unsigned long _timerBegin = 0;
 bool timerRunning = false;
 bool timerFinished = false;
-int timerMinutes = 0; 
-int timerSeconds = 10; 
+int timerMinutes = 0;
+int timerSeconds = 10;
 unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
 bool buzzerPlayedTimerFinished = false;
+unsigned long timerPausedSeconds = 0;
 
 // Stopwatch variables
 unsigned long _stopwatchBegin = 0;
 bool stopwatchRunning = false;
+unsigned long stopwatchPausedMillis = 0;
 
 void setup() {
     Serial.begin(115200);
@@ -58,25 +60,25 @@ void setup() {
     }
 
     pinMode(BUZZER_PIN, OUTPUT);
-    
+
     for (int i = 0; i < 6; i++) {
         pinMode(buttonPins[i], INPUT_PULLUP);
         lastButtonStates[i] = HIGH;
     }
-    
+
     drawHome();
 }
 
 void loop() {
     bool anyPressed = false;
-    
+
     for (int i = 0; i < 6; i++) {
         buttonStates[i] = digitalRead(buttonPins[i]);
-        
+
         if (buttonStates[i] == LOW && lastButtonStates[i] == HIGH) {
             anyPressed = true;
             lastInteraction = millis();
-            
+
             if (showHome) {
                 showHome = false;
                 showMenu = true;
@@ -92,7 +94,7 @@ void loop() {
                     drawMenu();
                 } else if (i == 4) {
                     selectMenuItem(selectedItem);
-                } else if (i == 5) { 
+                } else if (i == 5) {
                     showMenu = false;
                     showHome = true;
                     drawHome();
@@ -100,7 +102,6 @@ void loop() {
             } else {
                 // Item Mode: Timer
                 if (showTimer) {
-                    // Submenu Navigation
                     if (showSubMenu) {
                         if (i == 2) {
                             subMenuIndex--;
@@ -112,52 +113,63 @@ void loop() {
                             drawTimer();
                         } else if (i == 4) {
                             if (subMenuIndex == 0) {
+                                // Continue
                                 timerRunning = true;
-                                _timerBegin = millis() - (timerTotalSeconds - getRemainingTimer()) * 1000;
+                                _timerBegin = millis() - (timerTotalSeconds - timerPausedSeconds) * 1000;
                                 showSubMenu = false;
                                 buzzerStartStop(true);
                             } else {
+                                // Reset
                                 timerRunning = false;
                                 timerFinished = false;
                                 buzzerPlayedTimerFinished = false;
+                                timerPausedSeconds = timerTotalSeconds;  // Reset to full time
                                 showSubMenu = false;
                                 drawTimer();
                                 buzzerStartStop(false);
                             }
                         }
-                    }
-                    // Button 5: Toggle start / stop
-                    else {
-                        if (i == 4) { 
+                    } else {
+                        if (i == 4) {
                             if (!timerFinished) {
                                 if (timerRunning) {
+                                    // Pause timer
+                                    timerPausedSeconds = getRemainingTimer();
                                     timerRunning = false;
                                     showSubMenu = true;
                                     subMenuIndex = 0;
                                     buzzerStartStop(false);
                                     drawTimer();
                                 } else {
+                                    // Start or resume
+                                    if (timerPausedSeconds == 0 || timerPausedSeconds == timerTotalSeconds) {
+                                        // Fresh start
+                                        _timerBegin = millis();
+                                        timerPausedSeconds = timerTotalSeconds;
+                                    } else {
+                                        // Resume from paused
+                                        _timerBegin = millis() - (timerTotalSeconds - timerPausedSeconds) * 1000;
+                                    }
                                     timerRunning = true;
-                                    _timerBegin = millis();
+                                    timerFinished = false;
                                     buzzerStartStop(true);
                                 }
                             }
-                        } 
-                        // Button 6: Back to menu
-                        else if (i == 5) { 
+                        } else if (i == 5) {
                             timerRunning = false;
                             timerFinished = false;
                             buzzerPlayedTimerFinished = false;
+                            timerPausedSeconds = timerTotalSeconds;
                             showTimer = false;
                             showMenu = true;
                             drawMenu();
                         }
                     }
                 }
-                
+
+
                 // Item Mode: Stopwatch
                 else if (showStopwatch) {
-                    // Submenu navigation
                     if (showSubMenu) {
                         if (i == 2) {
                             subMenuIndex--;
@@ -170,47 +182,47 @@ void loop() {
                         } else if (i == 4) {
                             if (subMenuIndex == 0) {
                                 stopwatchRunning = true;
-                                _stopwatchBegin = millis() - getElapsedStopwatch();
+                                _stopwatchBegin = millis() - stopwatchPausedMillis;
                                 showSubMenu = false;
                                 buzzerStartStop(true);
                             } else {
                                 stopwatchRunning = false;
                                 _stopwatchBegin = 0;
+                                stopwatchPausedMillis = 0;
                                 showSubMenu = false;
                                 buzzerStartStop(false);
                                 drawStopwatch();
                             }
                         }
-                    }
-
-                    // Button 5: Toggle start / stop
-                    else {
+                    } else {
                         if (i == 4) {
                             if (stopwatchRunning) {
+                                // Pause stopwatch
+                                stopwatchPausedMillis = getElapsedStopwatch();
                                 stopwatchRunning = false;
                                 showSubMenu = true;
                                 subMenuIndex = 0;
                                 buzzerStartStop(false);
                                 drawStopwatch();
                             } else {
+                                // Resume stopwatch
                                 stopwatchRunning = true;
-                                _stopwatchBegin = millis();
+                                _stopwatchBegin = millis() - stopwatchPausedMillis;
                                 buzzerStartStop(true);
                             }
-                        }
-                        // Button 6: Back to menu
-                        else if (i == 5) {
+                        } else if (i == 5) {
+                            stopwatchRunning = false;
+                            stopwatchPausedMillis = 0;
                             showStopwatch = false;
                             showMenu = true;
                             drawMenu();
                         }
                     }
                 }
-                
+
                 // Item Mode: Info
                 else if (showInfo) {
-                    // Button 6: Back to menu
-                    if (i == 5) { 
+                    if (i == 5) {
                         showInfo = false;
                         showMenu = true;
                         drawMenu();
@@ -220,24 +232,23 @@ void loop() {
         }
         lastButtonStates[i] = buttonStates[i];
     }
-    
-    // Return to home after idle timeout
+
     if ((showMenu) && (millis() - lastInteraction > idleTimeout)) {
         showMenu = false;
         showHome = true;
         selectedItem = 0;
         drawHome();
     }
-    
+
     updateTimer();
     updateStopwatch();
-    
+
     delay(10);
 }
 
 void selectMenuItem(int index) {
     showMenu = false;
-    
+
     switch (index) {
         case 0:
             showTimer = true;
@@ -280,13 +291,14 @@ void buzzerTimerFinished() {
 // ----- MENU ITEMS SECTION -----
 
 unsigned long getRemainingTimer() {
+    if (!timerRunning) return timerPausedSeconds;
     unsigned long elapsed = (millis() - _timerBegin) / 1000;
     long remaining = timerTotalSeconds - elapsed;
     return (remaining > 0) ? remaining : 0;
 }
 
 unsigned long getElapsedStopwatch() {
-    if (_stopwatchBegin == 0) return 0;
+    if (!stopwatchRunning) return stopwatchPausedMillis;
     return millis() - _stopwatchBegin;
 }
 
@@ -323,7 +335,7 @@ void drawMenu() {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println("Menu:");
-    
+
     for (int i = 0; i < menuLength; i++) {
         display.setCursor(10, 15 + (i * 10));
         if (i == selectedItem) {
@@ -333,7 +345,7 @@ void drawMenu() {
         }
         display.println(menuItems[i]);
     }
-    
+
     display.display();
 }
 
@@ -343,15 +355,16 @@ void drawTimer() {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println("TIMER (Btn5:Start/Stop, Btn6:Back)");
-    
-    unsigned long elapsed = 0;
-    if (timerRunning) elapsed = (millis() - _timerBegin) / 1000;
 
-    long remaining = timerTotalSeconds - elapsed;
-    if (remaining <= 0) {
-        remaining = 0;
-        timerRunning = false;
-        timerFinished = true;
+    unsigned long remaining = getRemainingTimer();
+    if (timerRunning) {
+        unsigned long elapsed = (millis() - _timerBegin) / 1000;
+        remaining = timerTotalSeconds - elapsed;
+        if (remaining <= 0) {
+            remaining = 0;
+            timerRunning = false;
+            timerFinished = true;
+        }
     }
 
     int minutes = remaining / 60;
@@ -363,6 +376,11 @@ void drawTimer() {
     display.setTextSize(3);
     display.setCursor(25, 25);
     display.print(timeStr);
+
+    if (!timerRunning && !timerFinished && timerPausedSeconds > 0) {
+        display.setTextSize(1);
+        display.setCursor(35, 55);
+    }
 
     if (timerFinished) {
         display.setTextSize(1);
@@ -388,8 +406,7 @@ void drawStopwatch() {
     display.setCursor(0, 0);
     display.println("STOPWATCH (Btn5:Start/Stop, Btn6:Back)");
 
-    unsigned long elapsed = 0;
-    if (stopwatchRunning) elapsed = millis() - _stopwatchBegin;
+    unsigned long elapsed = getElapsedStopwatch();
 
     int minutes = (elapsed / 60000) % 60;
     int seconds = (elapsed / 1000) % 60;
@@ -401,6 +418,11 @@ void drawStopwatch() {
     display.setTextSize(2);
     display.setCursor(15, 30);
     display.print(timeStr);
+
+    if (!stopwatchRunning && stopwatchPausedMillis > 0) {
+        display.setTextSize(1);
+        display.setCursor(35, 55);
+    }
 
     if (showSubMenu) {
         display.setTextSize(1);
