@@ -76,9 +76,9 @@ void loop() {
                     selectedItem++;
                     if (selectedItem >= menuLength) selectedItem = 0;
                     drawMenu();
-                } else if (i == 2) {
+                } else if (i == 4) { // MOVED from button 3 to 5
                     selectMenuItem(selectedItem);
-                } else if (i == 3) {
+                } else if (i == 5) { // MOVED from button 4 to 6
                     showMenu = false;
                     showHome = true;
                     drawHome();
@@ -86,15 +86,15 @@ void loop() {
             } else {
                 // Item Mode: Timer
                 if (showTimer) {
-                    // Button 3: Toggle start / stop
-                    if (i == 2) {
+                    // Button 5: Toggle start / stop
+                    if (i == 4) { // MOVED from button 3 to 5
                         if (!timerFinished) {
                             timerRunning = !timerRunning;
                             if (timerRunning) _timerBegin = millis();
                         }
                     } 
-                    // Button 4: Back to menu
-                    else if (i == 3) {
+                    // Button 6: Back to menu
+                    else if (i == 5) { // MOVED from button 4 to 6
                         timerRunning = false;
                         timerFinished = false;
                         showTimer = false;
@@ -105,13 +105,13 @@ void loop() {
                 
                 // Item Mode: Stopwatch
                 else if (showStopwatch) {
-                    // Button 3: Toggle start / stop
-                    if (i == 2) {
+                    // Button 5: Toggle start / stop
+                    if (i == 4) { // MOVED from button 3 to 5
                         stopwatchRunning = !stopwatchRunning;
                         if (stopwatchRunning) _stopwatchBegin = millis();
                     }
-                    // Button 4: Back to menu
-                    else if (i == 3) {
+                    // Button 6: Back to menu
+                    else if (i == 5) { // MOVED from button 4 to 6
                         showStopwatch = false;
                         showMenu = true;
                         drawMenu();
@@ -120,8 +120,8 @@ void loop() {
                 
                 // Item Mode: Info
                 else if (showInfo) {
-                    // Button 4: Back to menu
-                    if (i == 3) {
+                    // Button 6: Back to menu
+                    if (i == 5) { // MOVED from button 4 to 6
                         showInfo = false;
                         showMenu = true;
                         drawMenu();
@@ -211,7 +211,7 @@ void drawTimer() {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("TIMER (Btn3:Start/Stop, Btn4:Back)");
+    display.println("TIMER (Btn5:Start/Stop, Btn6:Back)");
     
     unsigned long elapsed = 0;
     if (timerRunning) elapsed = (millis() - _timerBegin) / 1000;
@@ -247,7 +247,7 @@ void drawStopwatch() {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("STOPWATCH (Btn3:Start/Stop, Btn4:Back)");
+    display.println("STOPWATCH (Btn5:Start/Stop, Btn6:Back)");
 
     unsigned long elapsed = 0;
     if (stopwatchRunning) elapsed = millis() - _stopwatchBegin;
