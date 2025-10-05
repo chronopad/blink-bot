@@ -248,14 +248,20 @@ void drawStopwatch() {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println("STOPWATCH (Btn3:Start/Stop, Btn4:Back)");
-    
+
     unsigned long elapsed = 0;
-    if (stopwatchRunning) elapsed = (millis() - _stopwatchBegin) / 1000;
-    
+    if (stopwatchRunning) elapsed = millis() - _stopwatchBegin;
+
+    int minutes = (elapsed / 60000) % 60;
+    int seconds = (elapsed / 1000) % 60;
+    int centiseconds = (elapsed / 10) % 100;
+
+    char timeStr[10];
+    sprintf(timeStr, "%02d:%02d:%02d", minutes, seconds, centiseconds);
+
     display.setTextSize(2);
-    display.setCursor(40, 30);
-    display.print(elapsed);
-    display.println("s");
+    display.setCursor(15, 30);
+    display.print(timeStr);
     display.display();
 }
 
@@ -266,9 +272,9 @@ void drawInfo() {
     display.setCursor(0, 0);
     display.println("INFO");
     display.setCursor(10, 15);
-    display.println("Arduino OLED UI Demo");
+    display.println("Blink Bot");
     display.setCursor(10, 25);
-    display.println("Timer / Stopwatch / Info");
+    display.println("Lorem ipsum..");
     display.setCursor(10, 45);
     display.display();
 }
