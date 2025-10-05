@@ -36,6 +36,7 @@ const unsigned long idleTimeout = 5000;
 bool showSubMenu = false;
 int subMenuIndex = 0;
 int subMenuLength = 2;
+const char* subMenuItems[] = {"CONTINUE", "RESET"};
 
 // Timer variables
 unsigned long _timerBegin = 0;
@@ -45,7 +46,7 @@ int timerMinutes = 0;
 int timerSeconds = 10;
 unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
 bool buzzerPlayedTimerFinished = false;
-unsigned long timerPausedSeconds = 0;
+unsigned long timerPausedSeconds = timerTotalSeconds;
 
 // Stopwatch variables
 unsigned long _stopwatchBegin = 0;
@@ -128,6 +129,17 @@ void loop() {
                                 drawTimer();
                                 buzzerStartStop(false);
                             }
+                        } else if (i == 5) {
+                            timerRunning = false;
+                            timerFinished = false;
+                            buzzerPlayedTimerFinished = false;
+                            timerPausedSeconds = timerTotalSeconds;  // Reset to configured time
+                            _timerBegin = 0;
+                            showSubMenu = false;
+                            showTimer = false;
+                            showMenu = true;
+                            buzzerStartStop(false);
+                            drawMenu();
                         }
                     } else {
                         if (i == 4) {
@@ -193,6 +205,15 @@ void loop() {
                                 buzzerStartStop(false);
                                 drawStopwatch();
                             }
+                        } else if (i == 5) {
+                            stopwatchRunning = false;
+                            stopwatchPausedMillis = 0;
+                            _stopwatchBegin = 0;
+                            showSubMenu = false;
+                            showStopwatch = false;
+                            showMenu = true;
+                            buzzerStartStop(false);
+                            drawMenu();
                         }
                     } else {
                         if (i == 4) {
@@ -351,49 +372,39 @@ void drawMenu() {
 
 void drawTimer() {
     display.clearDisplay();
-    display.setTextSize(1);
+    display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("TIMER (Btn5:Start/Stop, Btn6:Back)");
 
     unsigned long remaining = getRemainingTimer();
-    if (timerRunning) {
-        unsigned long elapsed = (millis() - _timerBegin) / 1000;
-        remaining = timerTotalSeconds - elapsed;
-        if (remaining <= 0) {
-            remaining = 0;
-            timerRunning = false;
-            timerFinished = true;
-        }
+
+    // When not running, display paused or full duration
+    if (!timerRunning && !timerFinished) {
+        remaining = timerPausedSeconds;
     }
 
     int minutes = remaining / 60;
     int seconds = remaining % 60;
 
-    char timeStr[6];
-    sprintf(timeStr, "%02d:%02d", minutes, seconds);
+    display.setCursor(10, 20);
+    display.printf("%02d:%02d", minutes, seconds);
 
-    display.setTextSize(3);
-    display.setCursor(25, 25);
-    display.print(timeStr);
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("TIMER");
 
-    if (!timerRunning && !timerFinished && timerPausedSeconds > 0) {
-        display.setTextSize(1);
-        display.setCursor(35, 55);
-    }
-
-    if (timerFinished) {
-        display.setTextSize(1);
-        display.setCursor(40, 55);
-        display.print("DONE!");
-    }
-
+    // Show submenu if active
     if (showSubMenu) {
-        display.setTextSize(1);
-        display.setCursor(10, 55);
-        display.print(subMenuIndex == 0 ? "[Continue]" : " Continue ");
-        display.setCursor(70, 55);
-        display.print(subMenuIndex == 1 ? "[Reset]" : " Reset ");
+        int y = 50;
+        for (int i = 0; i < subMenuLength; i++) {
+            if (i == subMenuIndex) {
+                display.fillRect(0 + i * 60, y, 60, 14, SSD1306_WHITE);
+                display.setTextColor(SSD1306_BLACK);
+            } else {
+                display.setTextColor(SSD1306_WHITE);
+            }
+            display.setCursor(10 + i * 60, y + 2);
+            display.print(subMenuItems[i]);
+        }
     }
 
     display.display();
@@ -401,35 +412,39 @@ void drawTimer() {
 
 void drawStopwatch() {
     display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("STOPWATCH (Btn5:Start/Stop, Btn6:Back)");
-
-    unsigned long elapsed = getElapsedStopwatch();
-
-    int minutes = (elapsed / 60000) % 60;
-    int seconds = (elapsed / 1000) % 60;
-    int centiseconds = (elapsed / 10) % 100;
-
-    char timeStr[10];
-    sprintf(timeStr, "%02d:%02d:%02d", minutes, seconds, centiseconds);
-
     display.setTextSize(2);
-    display.setCursor(15, 30);
-    display.print(timeStr);
+    display.setTextColor(SSD1306_WHITE);
 
-    if (!stopwatchRunning && stopwatchPausedMillis > 0) {
-        display.setTextSize(1);
-        display.setCursor(35, 55);
+    unsigned long elapsed;
+    if (stopwatchRunning) {
+        elapsed = millis() - _stopwatchBegin;
+    } else {
+        elapsed = stopwatchPausedMillis;
     }
 
+    unsigned long minutes = (elapsed / 1000) / 60;
+    unsigned long seconds = (elapsed / 1000) % 60;
+    unsigned long millisecs = (elapsed % 1000) / 10; // for MM:SS:mm format
+
+    display.setCursor(10, 20);
+    display.printf("%02lu:%02lu:%02lu", minutes, seconds, millisecs);
+
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("STOPWATCH");
+
     if (showSubMenu) {
-        display.setTextSize(1);
-        display.setCursor(10, 55);
-        display.print(subMenuIndex == 0 ? "[Continue]" : " Continue ");
-        display.setCursor(70, 55);
-        display.print(subMenuIndex == 1 ? "[Reset]" : " Reset ");
+        int y = 50;
+        for (int i = 0; i < subMenuLength; i++) {
+            if (i == subMenuIndex) {
+                display.fillRect(0 + i * 60, y, 60, 14, SSD1306_WHITE);
+                display.setTextColor(SSD1306_BLACK);
+            } else {
+                display.setTextColor(SSD1306_WHITE);
+            }
+            display.setCursor(10 + i * 60, y + 2);
+            display.print(subMenuItems[i]);
+        }
     }
 
     display.display();
