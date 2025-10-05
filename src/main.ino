@@ -48,6 +48,14 @@ unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
 bool buzzerPlayedTimerFinished = false;
 unsigned long timerPausedSeconds = timerTotalSeconds;
 
+// Timer edit pointer
+enum TimerEditField { EDIT_MINUTE, EDIT_SECOND };
+TimerEditField timerEditField = EDIT_MINUTE;
+
+unsigned long lastBlinkTime = 0;
+bool blinkVisible = true;
+const unsigned long blinkInterval = 500;
+
 // Stopwatch variables
 unsigned long _stopwatchBegin = 0;
 bool stopwatchRunning = false;
@@ -103,6 +111,36 @@ void loop() {
             } else {
                 // Item Mode: Timer
                 if (showTimer) {
+                    // Timer configuration logic (only when timer is not running or finished)
+                    if (!timerRunning && !timerFinished && !showSubMenu) {
+                        if (i == 2) { // Left
+                            timerEditField = EDIT_MINUTE;
+                            drawTimer();
+                        } else if (i == 3) { // Right
+                            timerEditField = EDIT_SECOND;
+                            drawTimer();
+                        } else if (i == 0) { // Increase
+                            if (timerEditField == EDIT_MINUTE) {
+                                timerMinutes = (timerMinutes + 1) % 60;
+                            } else if (timerEditField == EDIT_SECOND) {
+                                timerSeconds = (timerSeconds + 1) % 60;
+                            }
+                            timerTotalSeconds = timerMinutes * 60 + timerSeconds;
+                            timerPausedSeconds = timerTotalSeconds;
+                            drawTimer();
+                        } else if (i == 1) { // Decrease
+                            if (timerEditField == EDIT_MINUTE) {
+                                timerMinutes = (timerMinutes == 0) ? 59 : timerMinutes - 1;
+                            } else if (timerEditField == EDIT_SECOND) {
+                                timerSeconds = (timerSeconds == 0) ? 59 : timerSeconds - 1;
+                            }
+                            timerTotalSeconds = timerMinutes * 60 + timerSeconds;
+                            timerPausedSeconds = timerTotalSeconds;
+                            drawTimer();
+                        }
+                    }
+
+
                     if (showSubMenu) {
                         if (i == 2) {
                             subMenuIndex--;
@@ -133,7 +171,7 @@ void loop() {
                             timerRunning = false;
                             timerFinished = false;
                             buzzerPlayedTimerFinished = false;
-                            timerPausedSeconds = timerTotalSeconds;  // Reset to configured time
+                            timerPausedSeconds = timerTotalSeconds;
                             _timerBegin = 0;
                             showSubMenu = false;
                             showTimer = false;
@@ -144,7 +182,6 @@ void loop() {
                     } else {
                         if (i == 4) {
                             if (timerFinished) {
-                                // Reset after finished
                                 timerRunning = false;
                                 timerFinished = false;
                                 buzzerPlayedTimerFinished = false;
@@ -164,11 +201,9 @@ void loop() {
                                 } else {
                                     // Start or resume
                                     if (timerPausedSeconds == 0 || timerPausedSeconds == timerTotalSeconds) {
-                                        // Fresh start
                                         _timerBegin = millis();
                                         timerPausedSeconds = timerTotalSeconds;
                                     } else {
-                                        // Resume from paused
                                         _timerBegin = millis() - (timerTotalSeconds - timerPausedSeconds) * 1000;
                                     }
                                     timerRunning = true;
@@ -187,7 +222,6 @@ void loop() {
                         }
                     }
                 }
-
 
                 // Item Mode: Stopwatch
                 else if (showStopwatch) {
@@ -227,7 +261,6 @@ void loop() {
                     } else {
                         if (i == 4) {
                             if (stopwatchRunning) {
-                                // Pause stopwatch
                                 stopwatchPausedMillis = getElapsedStopwatch();
                                 stopwatchRunning = false;
                                 showSubMenu = true;
@@ -235,7 +268,6 @@ void loop() {
                                 buzzerStartStop(false);
                                 drawStopwatch();
                             } else {
-                                // Resume stopwatch
                                 stopwatchRunning = true;
                                 _stopwatchBegin = millis() - stopwatchPausedMillis;
                                 buzzerStartStop(true);
@@ -349,8 +381,15 @@ void updateTimer() {
         buzzerTimerFinished();
         buzzerPlayedTimerFinished = true;
     }
-}
 
+    if (showTimer && !timerRunning && !timerFinished && !showSubMenu) {
+        if (millis() - lastBlinkTime > blinkInterval) {
+            blinkVisible = !blinkVisible;
+            lastBlinkTime = millis();
+            drawTimer();
+        }
+    }
+}
 
 void updateStopwatch() {
     if (showStopwatch && stopwatchRunning) drawStopwatch();
@@ -397,10 +436,7 @@ void drawTimer() {
 
     unsigned long remaining = getRemainingTimer();
 
-    // When not running, display paused or full duration
-    if (!timerRunning && !timerFinished) {
-        remaining = timerPausedSeconds;
-    }
+    if (!timerRunning && !timerFinished) remaining = timerPausedSeconds;
 
     int minutes = remaining / 60;
     int seconds = remaining % 60;
@@ -408,11 +444,18 @@ void drawTimer() {
     display.setCursor(10, 20);
     display.printf("%02d:%02d", minutes, seconds);
 
+    // Draw underline under current edit field
+    if (!timerRunning && !timerFinished && !showSubMenu && blinkVisible) {
+        if (timerEditField == EDIT_MINUTE)
+            display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
+        else if (timerEditField == EDIT_SECOND)
+            display.fillRect(40, 45, 20, 2, SSD1306_WHITE);
+    }
+
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.print("TIMER");
 
-    // Show submenu if active
     if (showSubMenu) {
         int y = 50;
         for (int i = 0; i < subMenuLength; i++) {
@@ -436,15 +479,12 @@ void drawStopwatch() {
     display.setTextColor(SSD1306_WHITE);
 
     unsigned long elapsed;
-    if (stopwatchRunning) {
-        elapsed = millis() - _stopwatchBegin;
-    } else {
-        elapsed = stopwatchPausedMillis;
-    }
+    if (stopwatchRunning) elapsed = millis() - _stopwatchBegin;
+    else elapsed = stopwatchPausedMillis;
 
     unsigned long minutes = (elapsed / 1000) / 60;
     unsigned long seconds = (elapsed / 1000) % 60;
-    unsigned long millisecs = (elapsed % 1000) / 10; // for MM:SS:mm format
+    unsigned long millisecs = (elapsed % 1000) / 10;
 
     display.setCursor(10, 20);
     display.printf("%02lu:%02lu:%02lu", minutes, seconds, millisecs);
@@ -480,6 +520,5 @@ void drawInfo() {
     display.println("Blink Bot");
     display.setCursor(10, 25);
     display.println("Lorem ipsum..");
-    display.setCursor(10, 45);
     display.display();
 }
