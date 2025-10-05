@@ -7,27 +7,34 @@
 #define OLED_RESET -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-const int buttonPins[5] = {12, 13, 14, 25, 26};
-int buttonStates[5];
+const int buttonPins[6] = {12, 13, 14, 25, 26, 27};
+int buttonStates[6];
 
-void setup() {
-    Serial.begin(115200);
-    
+void setupDisplay() {
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("SSD1306 allocation failed"));
         for (;;);
     }
-    
+
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println("5 Button Test Ready");
     display.display();
-    
-    for (int i = 0; i < 5; i++) {
+}
+
+void setupButtons() {
+    for (int i = 0; i < 6; i++) {
         pinMode(buttonPins[i], INPUT_PULLUP); 
     }
+}
+
+void setup() {
+    Serial.begin(115200);
+    
+    setupDisplay();
+    setupButtons();
 }
 
 void loop() {
@@ -37,7 +44,7 @@ void loop() {
     display.setCursor(0, 0);
     display.println("Button States:");
     
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         buttonStates[i] = digitalRead(buttonPins[i]);
         bool pressed = (buttonStates[i] == LOW);
         
