@@ -143,7 +143,16 @@ void loop() {
                         }
                     } else {
                         if (i == 4) {
-                            if (!timerFinished) {
+                            if (timerFinished) {
+                                // Reset after finished
+                                timerRunning = false;
+                                timerFinished = false;
+                                buzzerPlayedTimerFinished = false;
+                                timerPausedSeconds = timerTotalSeconds;
+                                _timerBegin = 0;
+                                drawTimer();
+                                buzzerStartStop(false);
+                            } else {
                                 if (timerRunning) {
                                     // Pause timer
                                     timerPausedSeconds = getRemainingTimer();
@@ -272,6 +281,8 @@ void selectMenuItem(int index) {
 
     switch (index) {
         case 0:
+            timerTotalSeconds = timerMinutes * 60 + timerSeconds;
+            timerPausedSeconds = timerTotalSeconds;
             showTimer = true;
             drawTimer();
             break;
@@ -324,13 +335,22 @@ unsigned long getElapsedStopwatch() {
 }
 
 void updateTimer() {
-    if (showTimer && timerRunning) drawTimer();
+    if (showTimer && timerRunning) {
+        unsigned long remaining = getRemainingTimer();
+        drawTimer();
+
+        if (remaining == 0) {
+            timerRunning = false;
+            timerFinished = true;
+        }
+    }
 
     if (showTimer && timerFinished && !buzzerPlayedTimerFinished) {
         buzzerTimerFinished();
         buzzerPlayedTimerFinished = true;
     }
 }
+
 
 void updateStopwatch() {
     if (showStopwatch && stopwatchRunning) drawStopwatch();
