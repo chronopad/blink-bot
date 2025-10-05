@@ -12,6 +12,12 @@ const int buttonPins[6] = {12, 13, 14, 25, 26, 27};
 int buttonStates[6];
 int lastButtonStates[6];
 
+// Buzzer setup
+#define BUZZER_PIN 32
+#define NOTE_A4 440
+#define NOTE_C5 523
+#define NOTE_F5 698
+
 // Menu and states
 const char* menuItems[] = {"Timer", "Stopwatch", "Info"};
 const int menuLength = 3;
@@ -30,9 +36,10 @@ const unsigned long idleTimeout = 5000;
 unsigned long _timerBegin = 0;
 bool timerRunning = false;
 bool timerFinished = false;
-int timerMinutes = 1; 
-int timerSeconds = 5; 
+int timerMinutes = 0; 
+int timerSeconds = 10; 
 unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
+bool buzzerPlayedTimerFinished = false;
 
 // Stopwatch variables
 unsigned long _stopwatchBegin = 0;
@@ -44,6 +51,8 @@ void setup() {
         Serial.println(F("SSD1306 allocation failed"));
         for (;;);
     }
+
+    pinMode(BUZZER_PIN, OUTPUT);
     
     for (int i = 0; i < 6; i++) {
         pinMode(buttonPins[i], INPUT_PULLUP);
@@ -76,9 +85,9 @@ void loop() {
                     selectedItem++;
                     if (selectedItem >= menuLength) selectedItem = 0;
                     drawMenu();
-                } else if (i == 4) { // MOVED from button 3 to 5
+                } else if (i == 4) {
                     selectMenuItem(selectedItem);
-                } else if (i == 5) { // MOVED from button 4 to 6
+                } else if (i == 5) { 
                     showMenu = false;
                     showHome = true;
                     drawHome();
@@ -87,16 +96,22 @@ void loop() {
                 // Item Mode: Timer
                 if (showTimer) {
                     // Button 5: Toggle start / stop
-                    if (i == 4) { // MOVED from button 3 to 5
+                    if (i == 4) { 
                         if (!timerFinished) {
                             timerRunning = !timerRunning;
-                            if (timerRunning) _timerBegin = millis();
+                            if (timerRunning) {
+                                _timerBegin = millis();
+                                buzzerBeepStart();
+                            } else {
+                                buzzerBeepStop();
+                            }
                         }
                     } 
                     // Button 6: Back to menu
-                    else if (i == 5) { // MOVED from button 4 to 6
+                    else if (i == 5) { 
                         timerRunning = false;
                         timerFinished = false;
+                        buzzerPlayedTimerFinished = false;
                         showTimer = false;
                         showMenu = true;
                         drawMenu();
@@ -106,12 +121,17 @@ void loop() {
                 // Item Mode: Stopwatch
                 else if (showStopwatch) {
                     // Button 5: Toggle start / stop
-                    if (i == 4) { // MOVED from button 3 to 5
+                    if (i == 4) {
                         stopwatchRunning = !stopwatchRunning;
-                        if (stopwatchRunning) _stopwatchBegin = millis();
+                        if (stopwatchRunning) {
+                            _stopwatchBegin = millis();
+                            buzzerBeepStart();
+                        } else {
+                            buzzerBeepStop();
+                        }
                     }
                     // Button 6: Back to menu
-                    else if (i == 5) { // MOVED from button 4 to 6
+                    else if (i == 5) {
                         showStopwatch = false;
                         showMenu = true;
                         drawMenu();
@@ -121,7 +141,7 @@ void loop() {
                 // Item Mode: Info
                 else if (showInfo) {
                     // Button 6: Back to menu
-                    if (i == 5) { // MOVED from button 4 to 6
+                    if (i == 5) { 
                         showInfo = false;
                         showMenu = true;
                         drawMenu();
@@ -132,7 +152,7 @@ void loop() {
         lastButtonStates[i] = buttonStates[i];
     }
     
-    // Functionality: Idle returns to home
+    // Return to home after idle timeout
     if ((showMenu) && (millis() - lastInteraction > idleTimeout)) {
         showMenu = false;
         showHome = true;
@@ -140,7 +160,6 @@ void loop() {
         drawHome();
     }
     
-    // Functionality: Item modes
     updateTimer();
     updateStopwatch();
     
@@ -152,27 +171,59 @@ void selectMenuItem(int index) {
     
     switch (index) {
         case 0:
-        showTimer = true;
-        drawTimer();
-        break;
+            showTimer = true;
+            drawTimer();
+            break;
         case 1:
-        showStopwatch = true;
-        drawStopwatch();
-        break;
+            showStopwatch = true;
+            drawStopwatch();
+            break;
         case 2:
-        showInfo = true;
-        drawInfo();
-        break;
+            showInfo = true;
+            drawInfo();
+            break;
     }
 }
 
+// ----- BUZZER SECTION -----
+
+void buzzerBeepStart() {
+    tone(BUZZER_PIN, NOTE_C5);
+    delay(100);
+    noTone(BUZZER_PIN);
+}
+
+void buzzerBeepStop() {
+    tone(BUZZER_PIN, NOTE_A4);
+    delay(100);
+    noTone(BUZZER_PIN);
+}
+
+void buzzerTimerFinished() {
+    for (int i = 0; i < 3; i++) {
+        tone(BUZZER_PIN, NOTE_F5);
+        delay(150);
+        noTone(BUZZER_PIN);
+        delay(150);
+    }
+}
+
+// ----- MENU ITEMS SECTION -----
+
 void updateTimer() {
     if (showTimer && timerRunning) drawTimer();
+
+    if (showTimer && timerFinished && !buzzerPlayedTimerFinished) {
+        buzzerTimerFinished();
+        buzzerPlayedTimerFinished = true;
+    }
 }
 
 void updateStopwatch() {
     if (showStopwatch && stopwatchRunning) drawStopwatch();
 }
+
+// ----- DISPLAY SECTION -----
 
 void drawHome() {
     display.clearDisplay();
