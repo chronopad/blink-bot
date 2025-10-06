@@ -577,7 +577,7 @@ void drawTimer() {
     display.print("TIMER");
 
     if (showSubMenu) {
-        int y = 52;                 
+        int y = 50;                 
         int buttonWidth = 60;          
         int buttonHeight = 14;         
 
@@ -627,7 +627,7 @@ void drawStopwatch() {
     display.print("STOPWATCH");
 
     if (showSubMenu) {
-        int y = 52;                 
+        int y = 50;                 
         int buttonWidth = 60;          
         int buttonHeight = 14;         
 
@@ -680,7 +680,7 @@ void drawPomodoro() {
     else if (pomodoroFinished) display.print("Finished!");
 
     if (showSubMenu) {
-        int y = 52;                 
+        int y = 50;                 
         int buttonWidth = 60;          
         int buttonHeight = 14;         
 
