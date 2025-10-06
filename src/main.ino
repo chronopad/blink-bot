@@ -30,7 +30,7 @@ bool showStopwatch = false;
 bool showInfo = false;
 
 unsigned long lastInteraction = 0;
-const unsigned long idleTimeout = 5000;
+const unsigned long idleTimeout = 10000;
 
 // Submenu variables
 bool showSubMenu = false;
@@ -42,8 +42,8 @@ const char* subMenuItems[] = {"CONTINUE", "RESET"};
 unsigned long _timerBegin = 0;
 bool timerRunning = false;
 bool timerFinished = false;
-int timerMinutes = 0;
-int timerSeconds = 10;
+int timerMinutes = 1;
+int timerSeconds = 0;
 unsigned long timerTotalSeconds = timerMinutes * 60 + timerSeconds;
 bool buzzerPlayedTimerFinished = false;
 unsigned long timerPausedSeconds = timerTotalSeconds;
