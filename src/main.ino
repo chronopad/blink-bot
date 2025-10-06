@@ -294,6 +294,12 @@ int lastButtonStates[6];
 #define NOTE_C5 523
 #define NOTE_F5 698
 
+unsigned long buzzerStartTime = 0;
+bool buzzerActive = false;
+int buzzerToneType = 0; 
+int buzzerFinishedCount = 0;
+unsigned long buzzerFinishedLastChange = 0;
+
 // Menu and states
 const char* menuItems[] = {"Timer", "Stopwatch", "Pomodoro", "Info"};
 const int menuLength = 4;
@@ -381,6 +387,10 @@ const unsigned long animBlinkInterval = 2000;
 int currentFrame = 0;
 bool isBlinking = false;
 unsigned long lastAnimBlinkTime = 0;
+
+unsigned long celebrationStartTime = 0;
+bool celebrationAnimationPlaying = false;
+const unsigned long celebrationDuration = 3000;
 
 void setup() {
     Serial.begin(115200);
@@ -739,6 +749,7 @@ void loop() {
     updateStopwatch();
     updatePomodoro();
     updateHomeAnimation();
+    updateBuzzer();
 
     display.display();
 
@@ -775,23 +786,62 @@ void selectMenuItem(int index) {
 // ----- BUZZER SECTION -----
 
 void buzzerStartStop(bool isStart) {
+    buzzerStartTime = millis();
+    buzzerActive = true;
+    buzzerToneType = isStart ? 1 : 2;
+    
     if (isStart) {
         tone(BUZZER_PIN, NOTE_C5);
-        delay(100);
-        noTone(BUZZER_PIN);
     } else {
         tone(BUZZER_PIN, NOTE_A4);
-        delay(100);
-        noTone(BUZZER_PIN);
     }
 }
 
 void buzzerTimerFinished() {
-    for (int i = 0; i < 3; i++) {
-        tone(BUZZER_PIN, NOTE_F5);
-        delay(150);
-        noTone(BUZZER_PIN);
-        delay(150);
+    buzzerStartTime = millis();
+    buzzerActive = true;
+    buzzerToneType = 3;
+    buzzerFinishedCount = 0;
+    buzzerFinishedLastChange = millis();
+    tone(BUZZER_PIN, NOTE_F5);
+}
+
+void updateBuzzer() {
+    if (!buzzerActive) return;
+    
+    unsigned long now = millis();
+    
+    if (buzzerToneType == 1 || buzzerToneType == 2) {
+        // Start/Stop buzzer - single 100ms beep
+        if (now - buzzerStartTime >= 100) {
+            noTone(BUZZER_PIN);
+            buzzerActive = false;
+            buzzerToneType = 0;
+        }
+    } else if (buzzerToneType == 3) {
+        // Finished buzzer - exactly 3 beeps of 150ms on, 150ms off
+        unsigned long elapsed = now - buzzerFinishedLastChange;
+        
+        if (buzzerFinishedCount < 5) { // 5 changes = 3 beeps (on-off-on-off-on)
+            if (elapsed >= 150) {
+                if (buzzerFinishedCount % 2 == 0) {
+                    // Turn off after beep
+                    noTone(BUZZER_PIN);
+                } else {
+                    // Turn on for next beep
+                    tone(BUZZER_PIN, NOTE_F5);
+                }
+                buzzerFinishedCount++;
+                buzzerFinishedLastChange = now;
+            }
+        } else {
+            // After 5th change (3rd beep is done), wait 150ms then turn off completely
+            if (elapsed >= 150) {
+                noTone(BUZZER_PIN);
+                buzzerActive = false;
+                buzzerToneType = 0;
+            }
+        }
     }
 }
 
@@ -824,12 +874,13 @@ void updateTimer() {
         if (remaining == 0) {
             timerRunning = false;
             timerFinished = true;
+            // Start celebration animation immediately
+            celebrationAnimationPlaying = true;
+            celebrationStartTime = millis();
+            // Play buzzer immediately
+            buzzerTimerFinished();
+            buzzerPlayedTimerFinished = true;
         }
-    }
-
-    if (showTimer && timerFinished && !buzzerPlayedTimerFinished) {
-        buzzerTimerFinished();
-        buzzerPlayedTimerFinished = true;
     }
 
     if (showTimer && !timerRunning && !timerFinished && !showSubMenu) {
@@ -838,6 +889,16 @@ void updateTimer() {
             lastBlinkTime = millis();
             drawTimer();
         }
+    }
+    
+    // Update celebration animation if playing (this will also show "DONE" text)
+    if (showTimer && timerFinished && celebrationAnimationPlaying) {
+        drawTimer();
+    }
+    
+    // Continue showing celebration face and "DONE" text even after animation ends
+    if (showTimer && timerFinished && !celebrationAnimationPlaying) {
+        drawTimer();
     }
 }
 
@@ -932,6 +993,22 @@ void updateFaceAnimation(bool active) {
     drawFaceFrame(idleFrames[0]);
 }
 
+void updateCelebrationAnimation() {
+    unsigned long now = millis();
+    
+    // Simple blinking celebration effect
+    if ((now - celebrationStartTime) % 500 < 250) {
+        drawFaceFrame(celebrateFrames[0]);
+    } else {
+        drawFaceFrame(idleFrames[0]);
+    }
+    
+    // Stop celebration after duration
+    if (now - celebrationStartTime >= celebrationDuration) {
+        celebrationAnimationPlaying = false;
+    }
+}
+
 
 // ----- DISPLAY SECTION -----
 
@@ -984,7 +1061,6 @@ void drawMenu() {
     display.display();
 }
 
-// ...existing code...
 void drawTimer() {
     display.clearDisplay();
     
@@ -1020,8 +1096,29 @@ void drawTimer() {
         display.setCursor(textX, textY);
         display.print(timeStr);
     } else if (timerFinished) {
-        // Show only celebrate animation when timer is finished
-        drawFaceFrame(celebrateFrames[0]);
+        // Show celebrate animation when timer is finished
+        if (celebrationAnimationPlaying) {
+            updateCelebrationAnimation();
+        } else {
+            drawFaceFrame(celebrateFrames[0]);
+        }
+        
+        // Draw "DONE" text in bottom right corner (appears immediately at 0ms)
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds("DONE", 0, 0, &x1, &y1, &w, &h);
+        int textX = SCREEN_WIDTH - w - 2;  // 2 pixels from right edge
+        int textY = SCREEN_HEIGHT - h - 2; // 2 pixels from bottom
+        
+        // Draw background rectangle for better readability
+        display.fillRect(textX - 1, textY - 1, w + 2, h + 2, SSD1306_BLACK);
+        display.drawRect(textX - 1, textY - 1, w + 2, h + 2, SSD1306_WHITE);
+        
+        display.setCursor(textX, textY);
+        display.print("DONE");
     } else {
         // Show regular timer interface when not running
         display.setTextSize(2);
@@ -1045,8 +1142,6 @@ void drawTimer() {
             drawSubMenu(50);
         }
     }
-
-    display.display();
 }
 
 void drawStopwatch() {
