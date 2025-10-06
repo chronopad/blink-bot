@@ -391,6 +391,9 @@ unsigned long lastAnimBlinkTime = 0;
 unsigned long celebrationStartTime = 0;
 bool celebrationAnimationPlaying = false;
 const unsigned long celebrationDuration = 3000;
+int celebrationBlinkCount = 0;
+unsigned long celebrationLastChange = 0;
+bool celebrationShowingCelebrate = true;
 
 void setup() {
     Serial.begin(115200);
@@ -877,6 +880,9 @@ void updateTimer() {
             // Start celebration animation immediately
             celebrationAnimationPlaying = true;
             celebrationStartTime = millis();
+            celebrationBlinkCount = 0;
+            celebrationLastChange = millis();
+            celebrationShowingCelebrate = true;
             // Play buzzer immediately
             buzzerTimerFinished();
             buzzerPlayedTimerFinished = true;
@@ -996,16 +1002,33 @@ void updateFaceAnimation(bool active) {
 void updateCelebrationAnimation() {
     unsigned long now = millis();
     
-    // Simple blinking celebration effect
-    if ((now - celebrationStartTime) % 500 < 250) {
+    // Celebration blinks exactly 3 times: celebrate-idle-celebrate-idle-celebrate-idle
+    if (celebrationBlinkCount < 5) { // 5 changes = 3 blinks (celebrate-idle-celebrate-idle-celebrate)
+        unsigned long elapsed = now - celebrationLastChange;
+        
+        if (elapsed >= 250) { // 250ms for each state
+            if (celebrationBlinkCount % 2 == 0) {
+                // Switch to idle after celebrate
+                celebrationShowingCelebrate = false;
+            } else {
+                // Switch to celebrate after idle
+                celebrationShowingCelebrate = true;
+            }
+            celebrationBlinkCount++;
+            celebrationLastChange = now;
+        }
+    } else {
+        unsigned long elapsed = now - celebrationLastChange;
+        if (elapsed >= 250) {
+            celebrationAnimationPlaying = false;
+        }
+    }
+    
+    // Draw the appropriate frame
+    if (celebrationShowingCelebrate) {
         drawFaceFrame(celebrateFrames[0]);
     } else {
         drawFaceFrame(idleFrames[0]);
-    }
-    
-    // Stop celebration after duration
-    if (now - celebrationStartTime >= celebrationDuration) {
-        celebrationAnimationPlaying = false;
     }
 }
 
