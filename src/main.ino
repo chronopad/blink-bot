@@ -19,8 +19,8 @@ int lastButtonStates[6];
 #define NOTE_F5 698
 
 // Menu and states
-const char* menuItems[] = {"Timer", "Stopwatch", "Info"};
-const int menuLength = 3;
+const char* menuItems[] = {"Timer", "Stopwatch", "Pomodoro", "Info"};
+const int menuLength = 4;
 int selectedItem = 0;
 
 bool showHome = true;
@@ -60,6 +60,24 @@ const unsigned long blinkInterval = 500;
 unsigned long _stopwatchBegin = 0;
 bool stopwatchRunning = false;
 unsigned long stopwatchPausedMillis = 0;
+
+// Pomodoro variables
+bool showPomodoro = false;
+enum PomodoroPhase { POMODORO_WORK, POMODORO_BREAK };
+PomodoroPhase pomodoroPhase = POMODORO_WORK;
+
+// const int pomodoroWorkMinutes = 25;
+// const int pomodoroBreakMinutes = 5;
+// unsigned long pomodoroWorkSeconds = pomodoroWorkMinutes * 60;
+// unsigned long pomodoroBreakSeconds = pomodoroBreakMinutes * 60;
+unsigned long pomodoroWorkSeconds = 10;
+unsigned long pomodoroBreakSeconds = 5;
+
+unsigned long pomodoroStartMillis = 0;
+unsigned long pomodoroRemainingSeconds = pomodoroWorkSeconds;
+bool pomodoroRunning = false;
+bool pomodoroFinished = false;
+bool buzzerPlayedPomodoroFinished = false;
 
 void setup() {
     Serial.begin(115200);
@@ -282,6 +300,69 @@ void loop() {
                     }
                 }
 
+                // Item Mode: Pomodoro
+                else if (showPomodoro) {
+                    if (showSubMenu) {
+                        // Navigate submenu
+                        if (i == 2) { // Left
+                            subMenuIndex--;
+                            if (subMenuIndex < 0) subMenuIndex = subMenuLength - 1;
+                            drawPomodoro();
+                        } else if (i == 3) { // Right
+                            subMenuIndex++;
+                            if (subMenuIndex >= subMenuLength) subMenuIndex = 0;
+                            drawPomodoro();
+                        } else if (i == 4) { // Select
+                            if (subMenuIndex == 0) { // Continue
+                                unsigned long total = (pomodoroPhase == POMODORO_WORK) ? pomodoroWorkSeconds : pomodoroBreakSeconds;
+                                pomodoroStartMillis = millis() - ((total - pomodoroRemainingSeconds) * 1000);
+                                pomodoroRunning = true;
+                                showSubMenu = false;
+                                buzzerStartStop(true);
+                            } else { // Reset
+                                pomodoroPhase = POMODORO_WORK;
+                                pomodoroRemainingSeconds = pomodoroWorkSeconds;
+                                pomodoroRunning = false;
+                                pomodoroFinished = false;
+                                showSubMenu = false;
+                                drawPomodoro();
+                            }
+                        } else if (i == 5) { // Back
+                            pomodoroRunning = false;
+                            pomodoroFinished = false;
+                            showSubMenu = false;
+                            showPomodoro = false;
+                            showMenu = true;
+                            drawMenu();
+                        }
+                    } else {
+                        if (i == 4) { // Start / Pause
+                            if (pomodoroRunning) {
+                                pomodoroRemainingSeconds = getRemainingPomodoro();
+                                pomodoroRunning = false;
+                                showSubMenu = true;
+                                subMenuIndex = 0;
+                                buzzerStartStop(false);
+                                drawPomodoro();
+                            } else {
+                                unsigned long total = (pomodoroPhase == POMODORO_WORK) ? pomodoroWorkSeconds : pomodoroBreakSeconds;
+                                pomodoroStartMillis = millis() - ((total - pomodoroRemainingSeconds) * 1000);
+                                pomodoroRunning = true;
+                                pomodoroFinished = false;
+                                buzzerStartStop(true);
+                                drawPomodoro();
+                            }
+                        } else if (i == 5) { // Back
+                            pomodoroRunning = false;
+                            pomodoroFinished = false;
+                            showPomodoro = false;
+                            showMenu = true;
+                            drawMenu();
+                        }
+                    }
+                }
+
+
                 // Item Mode: Info
                 else if (showInfo) {
                     if (i == 5) {
@@ -304,6 +385,7 @@ void loop() {
 
     updateTimer();
     updateStopwatch();
+    updatePomodoro();
 
     delay(10);
 }
@@ -323,6 +405,12 @@ void selectMenuItem(int index) {
             drawStopwatch();
             break;
         case 2:
+            showPomodoro = true;
+            pomodoroPhase = POMODORO_WORK;
+            pomodoroRemainingSeconds = pomodoroWorkSeconds;
+            drawPomodoro();
+            break;
+        case 3:
             showInfo = true;
             drawInfo();
             break;
@@ -366,6 +454,13 @@ unsigned long getElapsedStopwatch() {
     return millis() - _stopwatchBegin;
 }
 
+unsigned long getRemainingPomodoro() {
+    if (!pomodoroRunning) return pomodoroRemainingSeconds;
+    unsigned long elapsed = (millis() - pomodoroStartMillis) / 1000;
+    long remaining = ((pomodoroPhase == POMODORO_WORK) ? pomodoroWorkSeconds : pomodoroBreakSeconds) - elapsed;
+    return (remaining > 0) ? remaining : 0;
+}
+
 void updateTimer() {
     if (showTimer && timerRunning) {
         unsigned long remaining = getRemainingTimer();
@@ -393,6 +488,32 @@ void updateTimer() {
 
 void updateStopwatch() {
     if (showStopwatch && stopwatchRunning) drawStopwatch();
+}
+
+void updatePomodoro() {
+    if (showPomodoro && pomodoroRunning) {
+        unsigned long remaining = getRemainingPomodoro();
+        drawPomodoro();
+
+        if (remaining == 0 && !pomodoroFinished) {
+            pomodoroRunning = false;
+            pomodoroFinished = true;
+            buzzerTimerFinished();
+
+            if (pomodoroPhase == POMODORO_WORK) {
+                pomodoroPhase = POMODORO_BREAK;
+                pomodoroRemainingSeconds = pomodoroBreakSeconds;
+            } else {
+                pomodoroPhase = POMODORO_WORK;
+                pomodoroRemainingSeconds = pomodoroWorkSeconds;
+            }
+
+            // Reset start time for next phase
+            pomodoroStartMillis = millis();
+            drawPomodoro();
+        }
+
+    }
 }
 
 // ----- DISPLAY SECTION -----
@@ -444,7 +565,6 @@ void drawTimer() {
     display.setCursor(10, 20);
     display.printf("%02d:%02d", minutes, seconds);
 
-    // Draw underline under current edit field
     if (!timerRunning && !timerFinished && !showSubMenu && blinkVisible) {
         if (timerEditField == EDIT_MINUTE)
             display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
@@ -492,6 +612,46 @@ void drawStopwatch() {
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.print("STOPWATCH");
+
+    if (showSubMenu) {
+        int y = 50;
+        for (int i = 0; i < subMenuLength; i++) {
+            if (i == subMenuIndex) {
+                display.fillRect(0 + i * 60, y, 60, 14, SSD1306_WHITE);
+                display.setTextColor(SSD1306_BLACK);
+            } else {
+                display.setTextColor(SSD1306_WHITE);
+            }
+            display.setCursor(10 + i * 60, y + 2);
+            display.print(subMenuItems[i]);
+        }
+    }
+
+    display.display();
+}
+
+void drawPomodoro() {
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+
+    unsigned long remaining = getRemainingPomodoro();
+    int minutes = remaining / 60;
+    int seconds = remaining % 60;
+
+    display.setCursor(10, 20);
+    display.printf("%02d:%02d", minutes, seconds);
+
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    if (pomodoroPhase == POMODORO_WORK)
+        display.print("POMODORO - WORK");
+    else
+        display.print("POMODORO - BREAK");
+
+    display.setCursor(0, 50);
+    if (pomodoroRunning) display.print("Running...");
+    else if (pomodoroFinished) display.print("Finished!");
 
     if (showSubMenu) {
         int y = 50;
