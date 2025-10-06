@@ -931,7 +931,7 @@ void drawTimer() {
         if (timerEditField == TIMER_EDIT_MINUTE)
             display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
         else if (timerEditField == TIMER_EDIT_SECOND)
-            display.fillRect(40, 45, 20, 2, SSD1306_WHITE);
+            display.fillRect(46, 45, 20, 2, SSD1306_WHITE);
     }
 
     display.setTextSize(1);
@@ -989,7 +989,7 @@ void drawPomodoro() {
         if (pomodoroEditField == POMODORO_EDIT_MINUTE)
             display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
         else if (pomodoroEditField == POMODORO_EDIT_SECOND)
-            display.fillRect(40, 45, 20, 2, SSD1306_WHITE);
+            display.fillRect(46, 45, 20, 2, SSD1306_WHITE);
     }
 
     display.setTextSize(1);
