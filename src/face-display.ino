@@ -411,6 +411,43 @@ const unsigned char epd_bitmap_26 [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+class Animation {
+  public:
+    const unsigned char** frames;
+    int numFrames;
+    unsigned long frameDelay;
+    int currentFrame;
+    bool finished;
+
+    Animation(const unsigned char* f[], int count, unsigned long delay)
+      : frames(f), numFrames(count), frameDelay(delay), currentFrame(0), finished(false) {}
+
+    void reset() {
+      currentFrame = 0;
+      finished = false;
+    }
+
+    void update() {
+      unsigned long currentMillis = millis();
+      if (currentMillis - lastUpdate >= frameDelay) {
+        lastUpdate = currentMillis;
+
+        display.clearDisplay();
+        display.drawBitmap(0, 0, frames[currentFrame], SCREEN_WIDTH, SCREEN_HEIGHT, WHITE);
+        display.display();
+
+        currentFrame++;
+        if (currentFrame >= numFrames) {
+          finished = true;
+          currentFrame = 0;
+        }
+      }
+    }
+
+  private:
+    unsigned long lastUpdate = 0;
+};
+
 const int numBlinkFrames = 6;
 const unsigned char* blinkFrames[6] = {
 	epd_bitmap_26,
@@ -426,19 +463,12 @@ const unsigned char* idleFrames[1] = {
 	epd_bitmap_26
 };
 
+int faceState = 0;
 unsigned long idleStartTime = 0;
 const unsigned long idleDelay = 2000;
-const int blinkFrameDelay = 50;
-int faceState = 0;
 
-void playAnimation(const unsigned char* frames[], int frameCount, int delayTime = 200) {
-  for (int i = 0; i < frameCount; i++) {
-    display.clearDisplay();
-    display.drawBitmap(0, 0, frames[i], SCREEN_WIDTH, SCREEN_HEIGHT, WHITE);
-    display.display();
-    delay(delayTime);
-  }
-}
+Animation idleAnim(idleFrames, numIdleFrames, 50);
+Animation blinkAnim(blinkFrames, numBlinkFrames, 50);
 
 void setup() {
 	display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -448,19 +478,22 @@ void setup() {
 }
 
 void loop() {
-	unsigned long currentTime = millis();
+	unsigned long currentMillis = millis();
 
 	switch (faceState) {
 		case 0:
-			playAnimation(idleFrames, numIdleFrames, 50);
-			if (currentTime - idleStartTime >= idleDelay) {
+			idleAnim.update();
+			if (currentMillis - idleStartTime >= idleDelay) {
 				faceState = 1;
+				blinkAnim.reset();
 			}
 			break;
 		case 1:
-			playAnimation(blinkFrames, numBlinkFrames, 50);
-			faceState = 0;
-			idleStartTime = currentTime;
+			blinkAnim.update();
+			if (blinkAnim.finished) {
+				faceState = 0;
+				idleStartTime = currentMillis;
+			}
 			break;
 	}
 }
