@@ -577,15 +577,28 @@ void drawTimer() {
     display.print("TIMER");
 
     if (showSubMenu) {
-        int y = 50;
+        int y = 52;                 
+        int buttonWidth = 60;          
+        int buttonHeight = 14;         
+
         for (int i = 0; i < subMenuLength; i++) {
+            int x = i * buttonWidth; 
+
             if (i == subMenuIndex) {
-                display.fillRect(0 + i * 60, y, 60, 14, SSD1306_WHITE);
+                display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
                 display.setTextColor(SSD1306_BLACK);
             } else {
+                display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
                 display.setTextColor(SSD1306_WHITE);
             }
-            display.setCursor(10 + i * 60, y + 2);
+
+            int16_t x1, y1;
+            uint16_t w, h;
+            display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h); 
+            int textX = x + (buttonWidth - w) / 2;
+            int textY = y + (buttonHeight - h) / 2;
+
+            display.setCursor(textX, textY);
             display.print(subMenuItems[i]);
         }
     }
@@ -614,15 +627,28 @@ void drawStopwatch() {
     display.print("STOPWATCH");
 
     if (showSubMenu) {
-        int y = 50;
+        int y = 52;                 
+        int buttonWidth = 60;          
+        int buttonHeight = 14;         
+
         for (int i = 0; i < subMenuLength; i++) {
+            int x = i * buttonWidth; 
+
             if (i == subMenuIndex) {
-                display.fillRect(0 + i * 60, y, 60, 14, SSD1306_WHITE);
+                display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
                 display.setTextColor(SSD1306_BLACK);
             } else {
+                display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
                 display.setTextColor(SSD1306_WHITE);
             }
-            display.setCursor(10 + i * 60, y + 2);
+
+            int16_t x1, y1;
+            uint16_t w, h;
+            display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h); 
+            int textX = x + (buttonWidth - w) / 2;
+            int textY = y + (buttonHeight - h) / 2;
+
+            display.setCursor(textX, textY);
             display.print(subMenuItems[i]);
         }
     }
@@ -654,7 +680,7 @@ void drawPomodoro() {
     else if (pomodoroFinished) display.print("Finished!");
 
     if (showSubMenu) {
-        int y = 55;                 
+        int y = 52;                 
         int buttonWidth = 60;          
         int buttonHeight = 14;         
 
