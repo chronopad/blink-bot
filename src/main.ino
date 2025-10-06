@@ -257,8 +257,8 @@ bool buzzerPlayedTimerFinished = false;
 unsigned long timerPausedSeconds = timerTotalSeconds;
 
 // Timer edit pointer
-enum TimerEditField { EDIT_MINUTE, EDIT_SECOND };
-TimerEditField timerEditField = EDIT_MINUTE;
+enum TimerEditField { TIMER_EDIT_MINUTE, TIMER_EDIT_SECOND };
+TimerEditField timerEditField = TIMER_EDIT_MINUTE;
 
 unsigned long lastBlinkTime = 0;
 bool blinkVisible = true;
@@ -274,18 +274,22 @@ bool showPomodoro = false;
 enum PomodoroPhase { POMODORO_WORK, POMODORO_BREAK };
 PomodoroPhase pomodoroPhase = POMODORO_WORK;
 
-// const int pomodoroWorkMinutes = 25;
-// const int pomodoroBreakMinutes = 5;
-// unsigned long pomodoroWorkSeconds = pomodoroWorkMinutes * 60;
-// unsigned long pomodoroBreakSeconds = pomodoroBreakMinutes * 60;
-unsigned long pomodoroWorkSeconds = 10;
-unsigned long pomodoroBreakSeconds = 5;
+int pomodoroWorkMinutes = 25;
+int pomodoroWorkSecondsConfig = 0;
+int pomodoroBreakMinutes = 5;
+int pomodoroBreakSecondsConfig = 0;
+
+unsigned long pomodoroWorkSeconds = pomodoroWorkMinutes * 60 + pomodoroWorkSecondsConfig;
+unsigned long pomodoroBreakSeconds = pomodoroBreakMinutes * 60 + pomodoroBreakSecondsConfig;
 
 unsigned long pomodoroStartMillis = 0;
 unsigned long pomodoroRemainingSeconds = pomodoroWorkSeconds;
 bool pomodoroRunning = false;
 bool pomodoroFinished = false;
 bool buzzerPlayedPomodoroFinished = false;
+
+enum PomodoroEditField { POMODORO_EDIT_MINUTE, POMODORO_EDIT_SECOND };
+PomodoroEditField pomodoroEditField = POMODORO_EDIT_MINUTE;
 
 // Animation variables
 const unsigned char* idleFrames[1] = {
@@ -359,24 +363,24 @@ void loop() {
                     // Timer configuration logic (only when timer is not running or finished)
                     if (!timerRunning && !timerFinished && !showSubMenu) {
                         if (i == 2) { // Left
-                            timerEditField = EDIT_MINUTE;
+                            timerEditField = TIMER_EDIT_MINUTE;
                             drawTimer();
                         } else if (i == 3) { // Right
-                            timerEditField = EDIT_SECOND;
+                            timerEditField = TIMER_EDIT_SECOND;
                             drawTimer();
                         } else if (i == 0) { // Increase
-                            if (timerEditField == EDIT_MINUTE) {
+                            if (timerEditField == TIMER_EDIT_MINUTE) {
                                 timerMinutes = (timerMinutes + 1) % 60;
-                            } else if (timerEditField == EDIT_SECOND) {
+                            } else if (timerEditField == TIMER_EDIT_SECOND) {
                                 timerSeconds = (timerSeconds + 1) % 60;
                             }
                             timerTotalSeconds = timerMinutes * 60 + timerSeconds;
                             timerPausedSeconds = timerTotalSeconds;
                             drawTimer();
                         } else if (i == 1) { // Decrease
-                            if (timerEditField == EDIT_MINUTE) {
+                            if (timerEditField == TIMER_EDIT_MINUTE) {
                                 timerMinutes = (timerMinutes == 0) ? 59 : timerMinutes - 1;
-                            } else if (timerEditField == EDIT_SECOND) {
+                            } else if (timerEditField == TIMER_EDIT_SECOND) {
                                 timerSeconds = (timerSeconds == 0) ? 59 : timerSeconds - 1;
                             }
                             timerTotalSeconds = timerMinutes * 60 + timerSeconds;
@@ -529,6 +533,55 @@ void loop() {
 
                 // Item Mode: Pomodoro
                 else if (showPomodoro) {
+                    if (!pomodoroRunning && !pomodoroFinished && !showSubMenu) {
+                        if (i == 2) { // Left
+                            pomodoroEditField = POMODORO_EDIT_MINUTE;
+                            drawPomodoro();
+                        } else if (i == 3) { // Right
+                            pomodoroEditField = POMODORO_EDIT_SECOND;
+                            drawPomodoro();
+                        } else if (i == 0) { // Increase
+                            if (pomodoroPhase == POMODORO_WORK) {
+                                if (pomodoroEditField == POMODORO_EDIT_MINUTE) {
+                                    pomodoroWorkMinutes = (pomodoroWorkMinutes + 1) % 60;
+                                } else if (pomodoroEditField == POMODORO_EDIT_SECOND) {
+                                    pomodoroWorkSecondsConfig = (pomodoroWorkSecondsConfig + 1) % 60;
+                                }
+                                pomodoroWorkSeconds = pomodoroWorkMinutes * 60 + pomodoroWorkSecondsConfig;
+                                pomodoroRemainingSeconds = pomodoroWorkSeconds;
+                            } else {
+                                if (pomodoroEditField == POMODORO_EDIT_MINUTE) {
+                                    pomodoroBreakMinutes = (pomodoroBreakMinutes + 1) % 60;
+                                } else if (pomodoroEditField == POMODORO_EDIT_SECOND) {
+                                    pomodoroBreakSecondsConfig = (pomodoroBreakSecondsConfig + 1) % 60;
+                                }
+                                pomodoroBreakSeconds = pomodoroBreakMinutes * 60 + pomodoroBreakSecondsConfig;
+                                pomodoroRemainingSeconds = pomodoroBreakSeconds;
+                            }
+                            drawPomodoro();
+                        } else if (i == 1) { // Decrease
+                            if (pomodoroPhase == POMODORO_WORK) {
+                                if (pomodoroEditField == POMODORO_EDIT_MINUTE) {
+                                    pomodoroWorkMinutes = (pomodoroWorkMinutes == 0) ? 59 : pomodoroWorkMinutes - 1;
+                                } else if (pomodoroEditField == POMODORO_EDIT_SECOND) {
+                                    pomodoroWorkSecondsConfig = (pomodoroWorkSecondsConfig == 0) ? 59 : pomodoroWorkSecondsConfig - 1;
+                                }
+                                pomodoroWorkSeconds = pomodoroWorkMinutes * 60 + pomodoroWorkSecondsConfig;
+                                pomodoroRemainingSeconds = pomodoroWorkSeconds;
+                            } else {
+                                if (pomodoroEditField == POMODORO_EDIT_MINUTE) {
+                                    pomodoroBreakMinutes = (pomodoroBreakMinutes == 0) ? 59 : pomodoroBreakMinutes - 1;
+                                } else if (pomodoroEditField == POMODORO_EDIT_SECOND) {
+                                    pomodoroBreakSecondsConfig = (pomodoroBreakSecondsConfig == 0) ? 59 : pomodoroBreakSecondsConfig - 1;
+                                }
+                                pomodoroBreakSeconds = pomodoroBreakMinutes * 60 + pomodoroBreakSecondsConfig;
+                                pomodoroRemainingSeconds = pomodoroBreakSeconds;
+                            }
+                            drawPomodoro();
+                        }
+                    }
+
+
                     if (showSubMenu) {
                         // Navigate submenu
                         if (i == 2) { // Left
@@ -723,13 +776,11 @@ void updateStopwatch() {
 void updatePomodoro() {
     if (showPomodoro && pomodoroRunning) {
         unsigned long remaining = getRemainingPomodoro();
-        // updateFaceAnimation(true);
-        // display.display();
         drawPomodoro();
 
         if (remaining == 0 && !pomodoroFinished) {
             pomodoroRunning = false;
-            pomodoroFinished = true;
+            pomodoroFinished = false; // Keep this false to allow configuration
             buzzerTimerFinished();
 
             if (pomodoroPhase == POMODORO_WORK) {
@@ -740,11 +791,15 @@ void updatePomodoro() {
                 pomodoroRemainingSeconds = pomodoroWorkSeconds;
             }
 
-            // Reset start time for next phase
             pomodoroStartMillis = millis();
             drawPomodoro();
         }
-
+    } else if (showPomodoro && !pomodoroRunning && !pomodoroFinished && !showSubMenu) {
+        if (millis() - lastBlinkTime > blinkInterval) {
+            blinkVisible = !blinkVisible;
+            lastBlinkTime = millis();
+            drawPomodoro();
+        }
     }
 }
 
@@ -873,9 +928,9 @@ void drawTimer() {
     display.printf("%02d:%02d", minutes, seconds);
 
     if (!timerRunning && !timerFinished && !showSubMenu && blinkVisible) {
-        if (timerEditField == EDIT_MINUTE)
+        if (timerEditField == TIMER_EDIT_MINUTE)
             display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
-        else if (timerEditField == EDIT_SECOND)
+        else if (timerEditField == TIMER_EDIT_SECOND)
             display.fillRect(40, 45, 20, 2, SSD1306_WHITE);
     }
 
@@ -929,16 +984,20 @@ void drawPomodoro() {
     display.setCursor(10, 20);
     display.printf("%02d:%02d", minutes, seconds);
 
+    // Show edit indicators under the main timer text (similar to timer)
+    if (!pomodoroRunning && !pomodoroFinished && !showSubMenu && blinkVisible) {
+        if (pomodoroEditField == POMODORO_EDIT_MINUTE)
+            display.fillRect(10, 45, 20, 2, SSD1306_WHITE);
+        else if (pomodoroEditField == POMODORO_EDIT_SECOND)
+            display.fillRect(40, 45, 20, 2, SSD1306_WHITE);
+    }
+
     display.setTextSize(1);
     display.setCursor(0, 0);
     if (pomodoroPhase == POMODORO_WORK)
         display.print("POMODORO - WORK");
     else
         display.print("POMODORO - BREAK");
-
-    display.setCursor(0, 50);
-    if (pomodoroRunning) display.print("Running...");
-    else if (pomodoroFinished) display.print("Finished!");
 
     if (showSubMenu) {
         drawSubMenu(50);
