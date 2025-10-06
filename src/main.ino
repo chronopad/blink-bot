@@ -292,13 +292,15 @@ const unsigned char* idleFrames[1] = {
     epd_bitmap_face_idle
 };
 
-const unsigned char* blinkFrames[2] = {
+const unsigned char* blinkFrames[4] = {
+    epd_bitmap_face_blink1,
+    epd_bitmap_face_blink1,
     epd_bitmap_face_blink1,
     epd_bitmap_face_blink2
 };
 
 unsigned long lastAnimUpdate = 0;
-const unsigned long animDelay = 300;   
+const unsigned long animDelay = 200;   
 const unsigned long animBlinkInterval = 2000; 
 int currentFrame = 0;
 bool isBlinking = false;
@@ -613,6 +615,8 @@ void loop() {
     updatePomodoro();
     updateHomeAnimation();
 
+    display.display();
+
     delay(10);
 }
 
@@ -719,6 +723,8 @@ void updateStopwatch() {
 void updatePomodoro() {
     if (showPomodoro && pomodoroRunning) {
         unsigned long remaining = getRemainingPomodoro();
+        // updateFaceAnimation(true);
+        // display.display();
         drawPomodoro();
 
         if (remaining == 0 && !pomodoroFinished) {
@@ -744,39 +750,84 @@ void updatePomodoro() {
 
 void updateHomeAnimation() {
     if (showHome) {
-        unsigned long currentMillis = millis();
+        updateFaceAnimation(true);
+        display.display();
+    }
+}
 
-        if (!isBlinking && currentMillis - lastAnimBlinkTime >= animBlinkInterval) {
-            isBlinking = true;
-            currentFrame = 0;
-            lastAnimBlinkTime = currentMillis;
-        }
+void resetFaceAnimation() {
+    isBlinking = false;
+    currentFrame = 0;
+    lastAnimBlinkTime = millis();
+    lastAnimUpdate = millis();
+}
 
-        if (isBlinking && currentMillis - lastAnimUpdate >= animDelay) {
-            lastAnimUpdate = currentMillis;
+void drawFaceFrame(const unsigned char* bmp) {
+    display.fillRect(0, 0, SCREEN_WIDTH, 50, BLACK);
+    display.drawBitmap(0, 0, bmp, SCREEN_WIDTH, 50, WHITE);
+}
 
-            display.fillRect(0, 0, SCREEN_WIDTH, 50, BLACK); // clear top area
+void updateFaceAnimation(bool active) {
+    unsigned long now = millis();
+    int blinkFramesLen = sizeof(blinkFrames) / sizeof(blinkFrames[0]);
 
-            display.drawBitmap(0, 0, blinkFrames[currentFrame], SCREEN_WIDTH, 50, WHITE);
-            display.display();
+    if (!active) {
+        resetFaceAnimation();
+        return;
+    }
 
-            currentFrame++;
+    if (!isBlinking && now - lastAnimBlinkTime >= animBlinkInterval) {
+        isBlinking = true;
+        currentFrame = 0;
+        lastAnimBlinkTime = now;
+        lastAnimUpdate = now - animDelay; 
+    }
 
-            if (currentFrame >= 2) {
+    if (isBlinking) {
+        if (now - lastAnimUpdate >= animDelay) {
+            lastAnimUpdate = now;
+            if (currentFrame < blinkFramesLen) {
+                drawFaceFrame(blinkFrames[currentFrame]);
+                currentFrame++;
+            }
+            if (currentFrame >= blinkFramesLen) {
                 isBlinking = false;
             }
+        } else {
+            int idx = currentFrame;
+            if (idx >= blinkFramesLen) idx = blinkFramesLen - 1;
+            if (idx < 0) idx = 0;
+            drawFaceFrame(blinkFrames[idx]);
         }
-
-        if (!isBlinking) {
-            display.fillRect(0, 0, SCREEN_WIDTH, 50, BLACK);
-            display.drawBitmap(0, 0, idleFrames[0], SCREEN_WIDTH, 50, WHITE);
-            display.display();
-        }
+        return;
     }
+
+    drawFaceFrame(idleFrames[0]);
 }
 
 
 // ----- DISPLAY SECTION -----
+
+void drawSubMenu(int y = 50) {
+    int buttonWidth = 60;
+    int buttonHeight = 14;
+    for (int i = 0; i < subMenuLength; i++) {
+        int x = i * buttonWidth;
+        if (i == subMenuIndex) {
+            display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
+            display.setTextColor(SSD1306_BLACK);
+        } else {
+            display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
+            display.setTextColor(SSD1306_WHITE);
+        }
+        int16_t x1, y1; uint16_t w, h;
+        display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h);
+        int textX = x + (buttonWidth - w) / 2;
+        int textY = y + (buttonHeight - h) / 2;
+        display.setCursor(textX, textY);
+        display.print(subMenuItems[i]);
+    }
+}
 
 void drawHome() {
     display.fillRect(0, 50, SCREEN_WIDTH, 14, BLACK);
@@ -833,30 +884,7 @@ void drawTimer() {
     display.print("TIMER");
 
     if (showSubMenu) {
-        int y = 50;                 
-        int buttonWidth = 60;          
-        int buttonHeight = 14;         
-
-        for (int i = 0; i < subMenuLength; i++) {
-            int x = i * buttonWidth; 
-
-            if (i == subMenuIndex) {
-                display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_BLACK);
-            } else {
-                display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_WHITE);
-            }
-
-            int16_t x1, y1;
-            uint16_t w, h;
-            display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h); 
-            int textX = x + (buttonWidth - w) / 2;
-            int textY = y + (buttonHeight - h) / 2;
-
-            display.setCursor(textX, textY);
-            display.print(subMenuItems[i]);
-        }
+        drawSubMenu(50);
     }
 
     display.display();
@@ -883,30 +911,7 @@ void drawStopwatch() {
     display.print("STOPWATCH");
 
     if (showSubMenu) {
-        int y = 50;                 
-        int buttonWidth = 60;          
-        int buttonHeight = 14;         
-
-        for (int i = 0; i < subMenuLength; i++) {
-            int x = i * buttonWidth; 
-
-            if (i == subMenuIndex) {
-                display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_BLACK);
-            } else {
-                display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_WHITE);
-            }
-
-            int16_t x1, y1;
-            uint16_t w, h;
-            display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h); 
-            int textX = x + (buttonWidth - w) / 2;
-            int textY = y + (buttonHeight - h) / 2;
-
-            display.setCursor(textX, textY);
-            display.print(subMenuItems[i]);
-        }
+        drawSubMenu(50);
     }
 
     display.display();
@@ -936,30 +941,7 @@ void drawPomodoro() {
     else if (pomodoroFinished) display.print("Finished!");
 
     if (showSubMenu) {
-        int y = 50;                 
-        int buttonWidth = 60;          
-        int buttonHeight = 14;         
-
-        for (int i = 0; i < subMenuLength; i++) {
-            int x = i * buttonWidth; 
-
-            if (i == subMenuIndex) {
-                display.fillRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_BLACK);
-            } else {
-                display.drawRect(x, y, buttonWidth, buttonHeight, SSD1306_WHITE);
-                display.setTextColor(SSD1306_WHITE);
-            }
-
-            int16_t x1, y1;
-            uint16_t w, h;
-            display.getTextBounds(subMenuItems[i], 0, 0, &x1, &y1, &w, &h); 
-            int textX = x + (buttonWidth - w) / 2;
-            int textY = y + (buttonHeight - h) / 2;
-
-            display.setCursor(textX, textY);
-            display.print(subMenuItems[i]);
-        }
+        drawSubMenu(50);
     }
 
     display.display();
