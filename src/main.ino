@@ -509,6 +509,9 @@ unsigned long buzzerFinishedLastChange = 0;
 const char* menuItems[] = {"Timer", "Stopwatch", "Pomodoro", "Settings", "Info"};
 const int menuLength = 5;
 int selectedItem = 0;
+int currentPage = 0;
+const int itemsPerPage = 4;
+int totalPages = (menuLength + itemsPerPage - 1) / itemsPerPage; // Calculate total pages
 
 bool showHome = true;
 bool showMenu = false;
@@ -694,11 +697,31 @@ void loop() {
             } else if (showMenu) {
                 if (i == 0) {
                     selectedItem--;
-                    if (selectedItem < 0) selectedItem = menuLength - 1;
+                    if (selectedItem < 0) {
+                        selectedItem = menuLength - 1;
+                        currentPage = totalPages - 1;
+                    } else if (selectedItem < currentPage * itemsPerPage) {
+                        currentPage--;
+                    }
                     drawMenu();
                 } else if (i == 1) {
                     selectedItem++;
-                    if (selectedItem >= menuLength) selectedItem = 0;
+                    if (selectedItem >= menuLength) {
+                        selectedItem = 0;
+                        currentPage = 0;
+                    } else if (selectedItem >= (currentPage + 1) * itemsPerPage) {
+                        currentPage++;
+                    }
+                    drawMenu();
+                } else if (i == 2) { 
+                    currentPage--;
+                    if (currentPage < 0) currentPage = totalPages - 1;
+                    selectedItem = currentPage * itemsPerPage;
+                    drawMenu();
+                } else if (i == 3) { 
+                    currentPage++;
+                    if (currentPage >= totalPages) currentPage = 0;
+                    selectedItem = currentPage * itemsPerPage;
                     drawMenu();
                 } else if (i == 4) {
                     selectMenuItem(selectedItem);
@@ -1058,6 +1081,7 @@ void loop() {
         showMenu = false;
         showHome = true;
         selectedItem = 0;
+        currentPage = 0;
         drawHome();
     }
     
@@ -1388,18 +1412,34 @@ void drawHome() {
     display.display();
 }
 
-
 void drawMenu() {
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("MENU");
+    display.print("MENU");
     
-    for (int i = 0; i < menuLength; i++) {
-        display.setCursor(5, 15 + (i * 12));
+    // Show page indicator to the right of MENU title
+    display.print(" (");
+    display.print(currentPage + 1);
+    display.print("/");
+    display.print(totalPages);
+    display.print(")");
+    
+    // Calculate which items to show on current page - strictly 4 items max
+    int startIndex = currentPage * itemsPerPage;
+    int endIndex = min(startIndex + itemsPerPage, menuLength);
+    
+    // Ensure we never show more than 4 items
+    int itemsToShow = min(endIndex - startIndex, itemsPerPage);
+    
+    for (int i = 0; i < itemsToShow; i++) {
+        int menuIndex = startIndex + i;
+        if (menuIndex >= menuLength) break; // Safety check
         
-        if (i == selectedItem) {
+        display.setCursor(5, 15 + (i * 12)); // i is display position (0-3)
+        
+        if (menuIndex == selectedItem) {
             display.print("> ");
             display.setTextColor(SSD1306_BLACK);
             display.fillRect(15, 15 + (i * 12) - 1, 110, 10, SSD1306_WHITE);
@@ -1408,7 +1448,7 @@ void drawMenu() {
             display.print("  ");
         }
         
-        display.print(menuItems[i]);
+        display.print(menuItems[menuIndex]);
         display.setTextColor(SSD1306_WHITE);
     }
     
