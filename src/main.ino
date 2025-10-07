@@ -1256,6 +1256,19 @@ void drawPomodoro() {
         
         display.setCursor(textX + 1, textY);
         display.print(timeStr);
+        
+        // Draw phase state box in bottom left corner
+        const char* phaseStateText = (pomodoroPhase == POMODORO_WORK) ? "WORK" : "BREAK";
+        display.getTextBounds(phaseStateText, 0, 0, &x1, &y1, &w, &h);
+        int stateX = 2;  // 2 pixels from left edge
+        int stateY = SCREEN_HEIGHT - h - 2; // 2 pixels from bottom
+        
+        // Draw background rectangle for state
+        display.fillRect(stateX - 1, stateY - 1, w + 2, h + 2, SSD1306_BLACK);
+        display.drawRect(stateX - 1, stateY - 1, w + 2, h + 2, SSD1306_WHITE);
+        
+        display.setCursor(stateX + 1, stateY);
+        display.print(phaseStateText);
     } else if (pomodoroFinished) {
         // Show celebrate animation when pomodoro phase is finished
         if (celebrationAnimationPlaying) {
@@ -1268,12 +1281,7 @@ void drawPomodoro() {
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         
-        const char* phaseText;
-        if (pomodoroPhase == POMODORO_WORK) {
-            phaseText = "DONE";
-        } else {
-            phaseText = "DONE";
-        }
+        const char* phaseText = "DONE";
         
         int16_t x1, y1;
         uint16_t w, h;
@@ -1287,6 +1295,19 @@ void drawPomodoro() {
         
         display.setCursor(textX + 1, textY);
         display.print(phaseText);
+        
+        // Draw phase state box in bottom left corner
+        const char* phaseStateText = (pomodoroPhase == POMODORO_WORK) ? "WORK" : "BREAK";
+        display.getTextBounds(phaseStateText, 0, 0, &x1, &y1, &w, &h);
+        int stateX = 2;  // 2 pixels from left edge
+        int stateY = SCREEN_HEIGHT - h - 2; // 2 pixels from bottom
+        
+        // Draw background rectangle for state
+        display.fillRect(stateX - 1, stateY - 1, w + 2, h + 2, SSD1306_BLACK);
+        display.drawRect(stateX - 1, stateY - 1, w + 2, h + 2, SSD1306_WHITE);
+        
+        display.setCursor(stateX + 1, stateY);
+        display.print(phaseStateText);
     } else {
         // Show regular pomodoro interface when not running
         display.setTextSize(2);
