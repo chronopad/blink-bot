@@ -506,14 +506,16 @@ int buzzerFinishedCount = 0;
 unsigned long buzzerFinishedLastChange = 0;
 
 // Menu and states
-const char* menuItems[] = {"Timer", "Stopwatch", "Pomodoro", "Info"};
-const int menuLength = 4;
+const char* menuItems[] = {"Timer", "Stopwatch", "Pomodoro", "Settings", "Info"};
+const int menuLength = 5;
 int selectedItem = 0;
 
 bool showHome = true;
 bool showMenu = false;
 bool showTimer = false;
 bool showStopwatch = false;
+bool showPomodoro = false;
+bool showSettings = false;
 bool showInfo = false;
 
 unsigned long lastInteraction = 0;
@@ -549,7 +551,6 @@ bool stopwatchRunning = false;
 unsigned long stopwatchPausedMillis = 0;
 
 // Pomodoro variables
-bool showPomodoro = false;
 enum PomodoroPhase { POMODORO_WORK, POMODORO_BREAK };
 PomodoroPhase pomodoroPhase = POMODORO_WORK;
 
@@ -647,6 +648,12 @@ int celebrationBlinkCount = 0;
 unsigned long celebrationLastChange = 0;
 bool celebrationShowingCelebrate = true;
 
+// Settings variables
+int selectedFaceIndex = 0; 
+const int totalFaces = 2;
+const char* faceNames[] = {"Default", "???"};
+FacePackage* facePackages[] = {&defaultFace, &rbmanFace};
+
 void setup() {
     Serial.begin(115200);
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -660,6 +667,8 @@ void setup() {
         pinMode(buttonPins[i], INPUT_PULLUP);
         lastButtonStates[i] = HIGH;
     }
+
+    currentFace = facePackages[selectedFaceIndex];
     
     drawHome();
 }
@@ -997,6 +1006,25 @@ void loop() {
                         }
                     }
                 }
+
+                // Item Mode: Settings
+                else if (showSettings) {
+                    if (i == 0) { // Previous face
+                        selectedFaceIndex--;
+                        if (selectedFaceIndex < 0) selectedFaceIndex = totalFaces - 1;
+                        currentFace = facePackages[selectedFaceIndex];
+                        drawSettings();
+                    } else if (i == 1) { // Next face
+                        selectedFaceIndex++;
+                        if (selectedFaceIndex >= totalFaces) selectedFaceIndex = 0;
+                        currentFace = facePackages[selectedFaceIndex];
+                        drawSettings();
+                    } else if (i == 5) { // Back
+                        showSettings = false;
+                        showMenu = true;
+                        drawMenu();
+                    }
+                }
                 
                 // Item Mode: Info
                 else if (showInfo) {
@@ -1034,25 +1062,29 @@ void selectMenuItem(int index) {
     
     switch (index) {
         case 0:
-        timerTotalSeconds = timerMinutes * 60 + timerSeconds;
-        timerPausedSeconds = timerTotalSeconds;
-        showTimer = true;
-        drawTimer();
-        break;
+            timerTotalSeconds = timerMinutes * 60 + timerSeconds;
+            timerPausedSeconds = timerTotalSeconds;
+            showTimer = true;
+            drawTimer();
+            break;
         case 1:
-        showStopwatch = true;
-        drawStopwatch();
-        break;
+            showStopwatch = true;
+            drawStopwatch();
+            break;
         case 2:
-        showPomodoro = true;
-        pomodoroPhase = POMODORO_WORK;
-        pomodoroRemainingSeconds = pomodoroWorkSeconds;
-        drawPomodoro();
-        break;
+            showPomodoro = true;
+            pomodoroPhase = POMODORO_WORK;
+            pomodoroRemainingSeconds = pomodoroWorkSeconds;
+            drawPomodoro();
+            break;
         case 3:
-        showInfo = true;
-        drawInfo();
-        break;
+            showSettings = true;
+            drawSettings();
+            break;
+        case 4:
+            showInfo = true;
+            drawInfo();
+            break;
     }
 }
 
@@ -1235,8 +1267,8 @@ void resetFaceAnimation() {
 }
 
 void drawFaceFrame(const unsigned char* bmp) {
-    display.fillRect(0, 0, SCREEN_WIDTH, 50, BLACK);
-    display.drawBitmap(0, 0, bmp, SCREEN_WIDTH, 50, WHITE);
+    display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+    display.drawBitmap(0, 0, bmp, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE);
 }
 
 void updateFaceAnimation(bool active) {
@@ -1372,10 +1404,10 @@ void drawTimer() {
     int seconds = remaining % 60;
     
     if (timerRunning) {
-        // Show face animation with small timer in bottom right
+        // Show face animation full screen
         updateFaceAnimation(true);
         
-        // Draw small timer in bottom right corner
+        // Draw timer overlay in bottom right corner
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         
@@ -1397,14 +1429,14 @@ void drawTimer() {
         display.setCursor(textX + 1, textY);
         display.print(timeStr);
     } else if (timerFinished) {
-        // Show celebrate animation when timer is finished
+        // Show celebrate animation full screen when timer is finished
         if (celebrationAnimationPlaying) {
             updateCelebrationAnimation();
         } else {
             drawFaceFrame(currentFace->celebrateFrames[0]);
         }
         
-        // Draw "DONE" text in bottom right corner (appears immediately at 0ms)
+        // Draw "DONE" text overlay in bottom right corner
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         
@@ -1482,20 +1514,16 @@ void drawPomodoro() {
     int seconds = remaining % 60;
     
     if (pomodoroRunning) {
-        // Show face animation with small timer in bottom right
+        // Show face animation full screen
         updateFaceAnimation(true);
         
-        // Draw small timer in bottom right corner
+        // Draw timer overlay in bottom right corner
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         
-        // Create timer string with phase indicator
+        // Create timer string
         char timeStr[12];
-        if (pomodoroPhase == POMODORO_WORK) {
-            sprintf(timeStr, "%02d:%02d", minutes, seconds);
-        } else {
-            sprintf(timeStr, "%02d:%02d", minutes, seconds);
-        }
+        sprintf(timeStr, "%02d:%02d", minutes, seconds);
         
         // Calculate position for bottom right corner
         int16_t x1, y1;
@@ -1511,7 +1539,7 @@ void drawPomodoro() {
         display.setCursor(textX + 1, textY);
         display.print(timeStr);
         
-        // Draw phase state box in bottom left corner
+        // Draw phase state overlay in bottom left corner
         const char* phaseStateText = (pomodoroPhase == POMODORO_WORK) ? "WORK" : "BREAK";
         display.getTextBounds(phaseStateText, 0, 0, &x1, &y1, &w, &h);
         int stateX = 2;  // 2 pixels from left edge
@@ -1524,14 +1552,14 @@ void drawPomodoro() {
         display.setCursor(stateX + 1, stateY);
         display.print(phaseStateText);
     } else if (pomodoroFinished) {
-        // Show celebrate animation when pomodoro phase is finished
+        // Show celebrate animation full screen when pomodoro phase is finished
         if (celebrationAnimationPlaying) {
             updateCelebrationAnimation();
         } else {
             drawFaceFrame(currentFace->celebrateFrames[0]);
         }
         
-        // Draw phase completion text in bottom right corner
+        // Draw phase completion text overlay in bottom right corner
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         
@@ -1550,7 +1578,7 @@ void drawPomodoro() {
         display.setCursor(textX + 1, textY);
         display.print(phaseText);
         
-        // Draw phase state box in bottom left corner
+        // Draw phase state overlay in bottom left corner
         const char* phaseStateText = (pomodoroPhase == POMODORO_WORK) ? "WORK" : "BREAK";
         display.getTextBounds(phaseStateText, 0, 0, &x1, &y1, &w, &h);
         int stateX = 2;  // 2 pixels from left edge
@@ -1589,6 +1617,33 @@ void drawPomodoro() {
             drawSubMenu(50);
         }
     }
+    
+    display.display();
+}
+
+void drawSettings() {
+    display.clearDisplay();
+
+    // Title
+    display.setCursor(0, 0);
+    display.print("SETTINGS");
+    
+    // Draw settings UI in bottom half
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    
+    // Face selection area with background
+    display.fillRect(0, 45, SCREEN_WIDTH, 19, SSD1306_BLACK);
+    display.drawRect(0, 45, SCREEN_WIDTH, 19, SSD1306_WHITE);
+    
+    // Current face name
+    display.setCursor(5, 50);
+    display.print("Face: ");
+    display.print(faceNames[selectedFaceIndex]);
+    
+    // Navigation arrows
+    display.setCursor(5, 58);
+    display.print("< UP/DOWN >");
     
     display.display();
 }
