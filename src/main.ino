@@ -1394,16 +1394,22 @@ void drawMenu() {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("Menu:");
+    display.println("MENU");
     
     for (int i = 0; i < menuLength; i++) {
-        display.setCursor(10, 15 + (i * 10));
+        display.setCursor(5, 15 + (i * 12));
+        
         if (i == selectedItem) {
             display.print("> ");
+            display.setTextColor(SSD1306_BLACK);
+            display.fillRect(15, 15 + (i * 12) - 1, 110, 10, SSD1306_WHITE);
+            display.setCursor(17, 15 + (i * 12));
         } else {
             display.print("  ");
         }
-        display.println(menuItems[i]);
+        
+        display.print(menuItems[i]);
+        display.setTextColor(SSD1306_WHITE);
     }
     
     display.display();
