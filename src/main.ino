@@ -654,6 +654,10 @@ const int totalFaces = 2;
 const char* faceNames[] = {"Default", "???"};
 FacePackage* facePackages[] = {&defaultFace, &rbmanFace};
 
+int settingsSelectedItem = 0;
+const int settingsMenuLength = 3;
+const char* settingsMenuItems[] = {"Style", "Sound", "Display"};
+
 void setup() {
     Serial.begin(115200);
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -1009,17 +1013,28 @@ void loop() {
 
                 // Item Mode: Settings
                 else if (showSettings) {
-                    if (i == 0) { // Previous face
-                        selectedFaceIndex--;
-                        if (selectedFaceIndex < 0) selectedFaceIndex = totalFaces - 1;
-                        currentFace = facePackages[selectedFaceIndex];
+                    if (i == 0) { 
+                        settingsSelectedItem--;
+                        if (settingsSelectedItem < 0) settingsSelectedItem = settingsMenuLength - 1;
                         drawSettings();
-                    } else if (i == 1) { // Next face
-                        selectedFaceIndex++;
-                        if (selectedFaceIndex >= totalFaces) selectedFaceIndex = 0;
-                        currentFace = facePackages[selectedFaceIndex];
+                    } else if (i == 1) {
+                        settingsSelectedItem++;
+                        if (settingsSelectedItem >= settingsMenuLength) settingsSelectedItem = 0;
                         drawSettings();
-                    } else if (i == 5) { // Back
+                    } else if (i == 2 || i == 3) { // LEFT/RIGHT - Modify selected setting
+                        if (settingsSelectedItem == 0) {
+                            if (i == 2) {
+                                selectedFaceIndex--;
+                                if (selectedFaceIndex < 0) selectedFaceIndex = totalFaces - 1;
+                            } else { 
+                                selectedFaceIndex++;
+                                if (selectedFaceIndex >= totalFaces) selectedFaceIndex = 0;
+                            }
+                            currentFace = facePackages[selectedFaceIndex];
+                            drawSettings();
+                        }
+                        // Add more setting modifications here for other configuration
+                    } else if (i == 5) {
                         showSettings = false;
                         showMenu = true;
                         drawMenu();
@@ -1623,27 +1638,42 @@ void drawPomodoro() {
 
 void drawSettings() {
     display.clearDisplay();
-
-    // Title
-    display.setCursor(0, 0);
-    display.print("SETTINGS");
-    
-    // Draw settings UI in bottom half
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     
-    // Face selection area with background
-    display.fillRect(0, 45, SCREEN_WIDTH, 19, SSD1306_BLACK);
-    display.drawRect(0, 45, SCREEN_WIDTH, 19, SSD1306_WHITE);
+    // Title
+    display.setCursor(0, 0);
+    display.println("SETTINGS");
     
-    // Current face name
-    display.setCursor(5, 50);
-    display.print("Face: ");
-    display.print(faceNames[selectedFaceIndex]);
-    
-    // Navigation arrows
-    display.setCursor(5, 58);
-    display.print("< UP/DOWN >");
+    // Settings menu items
+    for (int i = 0; i < settingsMenuLength; i++) {
+        display.setCursor(5, 15 + (i * 12));
+        
+        // Highlight selected item
+        if (i == settingsSelectedItem) {
+            display.print("> ");
+            display.setTextColor(SSD1306_BLACK);
+            display.fillRect(15, 15 + (i * 12) - 1, 110, 10, SSD1306_WHITE);
+            display.setCursor(17, 15 + (i * 12));
+        } else {
+            display.print("  ");
+        }
+        
+        // Show setting name and current value
+        display.print(settingsMenuItems[i]);
+        display.print(": ");
+        
+        // Show current value based on setting type
+        if (i == 0) { // Face Style
+            display.print(faceNames[selectedFaceIndex]);
+        } else if (i == 1) { // Sound
+            display.print("ON"); // Placeholder
+        } else if (i == 2) { // Display
+            display.print("BRIGHT"); // Placeholder
+        }
+        
+        display.setTextColor(SSD1306_WHITE); // Reset color
+    }
     
     display.display();
 }
