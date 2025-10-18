@@ -1,0 +1,120 @@
+{
+  "uuid": "d49f4a77ebe423fe6fbc77421cbef1c7",
+  "path": "Offline/blink-bot",
+  "name": "blink-bot",
+  "content": "",
+  "created_at": "2025-10-17 16:29:27",
+  "updated_at": "2025-10-17 22:36:07",
+  "stick": "",
+  "documents": [
+    {
+      "uuid": "b0c5f8b1a9fe9d7e6c759983c50e3266",
+      "title": "schematics-main",
+      "description": "Main schematics for Blink Bot components.",
+      "docType": "1",
+      "master": "",
+      "thumb": "/images/thumb-default.png",
+      "components": {
+        "0f555919900e4902bcc94053395edfbf": 1,
+        "339fe2cd55e0c1cf9903870c08bcace8": 6,
+        "2136fccdbd134a5a9a82366e6666fe20": 1
+      },
+      "BOM": [
+        [
+          "Value",
+          "Quantity",
+          "Package",
+          "Components",
+          "CustomPara"
+        ],
+        [
+          "BUZZER-12X9",
+          1,
+          "BUZ-TH_BD12.0-P7.60-D0.6-FD",
+          "BUZZER1",
+          {
+            "Manufacturer Part": "buzzer-12X9",
+            "Manufacturer": "null",
+            "Supplier": "LCSC",
+            "Supplier Part": "C9900016920"
+          }
+        ],
+        [
+          "button6*6*8",
+          6,
+          "KEY-TH_4P-L6.0-W6.0-P4.50-LS7.5",
+          "KEY1,KEY2,KEY3,KEY4,KEY5,KEY6",
+          {
+            "Manufacturer Part": "button6*6*8",
+            "Manufacturer": "ReliaPro",
+            "Supplier": "LCSC",
+            "Supplier Part": "C59982"
+          }
+        ],
+        [
+          "ESP32C3-SUPERMINI",
+          1,
+          "COMM-SMD_16P-L22.5-W18.0-P2.54-TL",
+          "U1",
+          {
+            "Manufacturer Part": "ESP32C3-SuperMini",
+            "Manufacturer": "null",
+            "Supplier": "LCSC",
+            "Supplier Part": "C9900147397"
+          }
+        ]
+      ],
+      "updateTime": 1760712283,
+      "createTime": 1760693367,
+      "histories": [],
+      "created_at": "2025-10-17 16:29:27",
+      "updated_at": "2025-10-17 21:44:43"
+    },
+    {
+      "uuid": "8b1fdd8b25fe23782e02ed2833df8238",
+      "puuid": "d49f4a77ebe423fe6fbc77421cbef1c7",
+      "title": "pcb-main",
+      "filename": "pcb-main.json",
+      "description": "Main PCB board design for Blink Bot.",
+      "docType": "3",
+      "master": "",
+      "thumb": "/images/thumb-default.png",
+      "components": {
+        "a97f5b7dda374d21b303cfcde1d7b753": 1,
+        "4937126739894c52921de221c4760bbc": 1,
+        "dce469acea214c44ac101e294d1c2ff5": 6
+      },
+      "BOM": [
+        [
+          "Value",
+          "Quantity",
+          "Package",
+          "Components",
+          "CustomPara"
+        ],
+        [
+          "ESP32C3-SUPERMINI",
+          1,
+          "COMM-SMD_16P-L22.5-W18.0-P2.54-TL",
+          "U1",
+          {
+            "Manufacturer Part": "ESP32C3-SuperMini",
+            "Manufacturer": "null",
+            "Supplier": "LCSC",
+            "Supplier Part": "C9900147397"
+          }
+        ]
+      ],
+      "updateTime": 1760715367,
+      "createTime": 1760711383,
+      "histories": [],
+      "created_at": "2025-10-17 21:29:43",
+      "updated_at": "2025-10-17 22:36:07"
+    }
+  ],
+  "sort": [],
+  "title": "blink-bot",
+  "foldername": "blink-bot",
+  "schfilename": "blink-bot.json",
+  "schfilemtime": 1760712283270
+}
